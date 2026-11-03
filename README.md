@@ -49,7 +49,30 @@ A regra está em [`src/lib/finance.ts`](src/lib/finance.ts) e é coberta por tes
 - Sessão em cookie JWT assinado ([jose](https://github.com/panva/jose)) e senha com bcrypt
 - Zod para validação e Vitest para testes
 
-## Rodando localmente
+## Instalação no Windows (recomendado)
+
+Depois de clonar o repositório, abra a pasta no Explorador de Arquivos e dê **duplo clique**:
+
+| Arquivo | O que faz |
+|---|---|
+| `instalar.bat` | Instala tudo na primeira vez (ver abaixo). Pode ser rodado de novo sem perder dados. |
+| `iniciar.bat` | Abre o sistema e o navegador. Para parar, feche a janela. |
+| `atualizar.bat` | Baixa a versão mais recente e atualiza o banco, com backup automático antes. |
+
+O `instalar.bat`:
+
+1. Confere o **Node.js** (20.9+) e, se faltar, oferece instalar com o `winget`.
+2. Pergunta onde o banco vai rodar: **Docker Desktop**, um **PostgreSQL já instalado** (cria o usuário e o banco `cami`) ou **instala o PostgreSQL 16** pelo `winget`.
+3. Pede o **e-mail e a senha do gerente** e cria o `.env`, com segredos gerados automaticamente.
+4. Instala as dependências, cria as tabelas, cadastra o gerente e os dados iniciais e gera o build.
+
+O `atualizar.bat` confere se o sistema está fechado e se não há arquivos alterados na pasta. Em seguida faz **backup do banco** em `backups\` (guarda os 10 mais recentes), roda `git pull`, atualiza as dependências, aplica as migrações e gera o build de novo.
+
+Para os mestres acessarem pelo celular na mesma rede, use o endereço `http://<ip-do-computador>:3000` que o `iniciar.bat` mostra. Na primeira execução, permita o acesso em "Redes privadas" quando o Firewall do Windows perguntar.
+
+Se o Windows bloquear o script ("execução de scripts foi desabilitada"), use sempre os arquivos `.bat`: eles já chamam o PowerShell com a permissão necessária só para esses scripts.
+
+## Rodando localmente (manual, qualquer sistema)
 
 Requisitos: Node.js 20.9 ou mais recente e Docker (ou um PostgreSQL já instalado).
 
@@ -114,7 +137,7 @@ Funciona em qualquer hospedagem de Next.js com um PostgreSQL acessível. Por exe
 2. Rode `npm run db:deploy` e `npm run db:seed` apontando para o banco de produção.
 3. Faça o deploy. O `postinstall` gera o cliente Prisma durante o build.
 
-Em produção o cookie de sessão é marcado como `Secure`, então o site precisa estar em HTTPS.
+Em produção o cookie de sessão é marcado como `Secure`, então o site precisa estar em HTTPS. Numa instalação local acessada por `http://` a partir de outros aparelhos, defina `COOKIE_SECURE="false"`. O `instalar.bat` já faz isso.
 
 ## Estrutura
 

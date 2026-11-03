@@ -41,11 +41,22 @@ export async function criarSessao(perfil: Perfil, id: number) {
   const token = await assinar({ perfil, id, expiraEm: expiraEm.toISOString() });
   (await cookies()).set(COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: cookieSeguro(),
     sameSite: "lax",
     expires: expiraEm,
     path: "/",
   });
+}
+
+/**
+ * Cookie só trafega em HTTPS? Padrão: sim em produção. Em instalação local acessada
+ * pela rede (http://192.168...), defina COOKIE_SECURE="false", senão o login falha.
+ */
+function cookieSeguro() {
+  const v = process.env.COOKIE_SECURE?.trim().toLowerCase();
+  if (v === "false" || v === "0") return false;
+  if (v === "true" || v === "1") return true;
+  return process.env.NODE_ENV === "production";
 }
 
 export async function lerSessao() {
