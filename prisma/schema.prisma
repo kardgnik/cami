@@ -1,0 +1,98 @@
+// Valores monetários são armazenados em centavos (Int) e percentuais em
+// pontos-base (Int, 1% = 100) para evitar erros de arredondamento de ponto flutuante.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Periodicidade {
+  MENSAL
+  TRIMESTRAL
+  SEMESTRAL
+  ANUAL
+}
+
+enum StatusAssinante {
+  ATIVO
+  INADIMPLENTE
+  CANCELADO
+}
+
+model Gerente {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  senhaHash String
+  createdAt DateTime @default(now())
+
+  @@map("gerentes")
+}
+
+model Plataforma {
+  id                Int         @id @default(autoincrement())
+  nome              String      @unique
+  taxaPercentualBp  Int         @default(0)
+  taxaFixaCentavos  Int         @default(0)
+  ativo             Boolean     @default(true)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  assinantes        Assinante[]
+
+  @@map("plataformas")
+}
+
+model MetodoPagamento {
+  id                Int         @id @default(autoincrement())
+  nome              String      @unique
+  taxaPercentualBp  Int         @default(0)
+  taxaFixaCentavos  Int         @default(0)
+  ativo             Boolean     @default(true)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  assinantes        Assinante[]
+
+  @@map("metodos_pagamento")
+}
+
+model Plano {
+  id            Int           @id @default(autoincrement())
+  nome          String        @unique
+  descricao     String?
+  valorCentavos Int
+  periodicidade Periodicidade @default(MENSAL)
+  ativo         Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  assinantes    Assinante[]
+
+  @@map("planos")
+}
+
+model Assinante {
+  id                Int             @id @default(autoincrement())
+  nome              String
+  email             String
+  telefone          String?
+  status            StatusAssinante @default(ATIVO)
+  dataInicio        DateTime        @db.Date
+  observacoes       String?
+  planoId           Int
+  plataformaId      Int
+  metodoPagamentoId Int
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  plano           Plano           @relation(fields: [planoId], references: [id], onDelete: Restrict)
+  plataforma      Plataforma      @relation(fields: [plataformaId], references: [id], onDelete: Restrict)
+  metodoPagamento MetodoPagamento @relation(fields: [metodoPagamentoId], references: [id], onDelete: Restrict)
+
+  @@index([status])
+  @@index([planoId])
+  @@index([plataformaId])
+  @@index([metodoPagamentoId])
+  @@map("assinantes")
+}
