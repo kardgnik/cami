@@ -119,8 +119,8 @@ export default async function Page() {
           </Vazio>
         </div>
       ) : (
-        <div className="mt-6 grid gap-6 xl:grid-cols-2">
-          <TabelaGrupo titulo="Por plataforma" grupos={porPlataforma} comTaxa campoTaxa="taxaPlataforma" rotuloTaxa="Taxa plataforma/mês" className="xl:col-span-2" />
+        <div className="mt-6 grid gap-6">
+          <TabelaGrupo titulo="Por plataforma" grupos={porPlataforma} comTaxa campoTaxa="taxaPlataforma" rotuloTaxa="Taxa plataforma/mês" />
           <TabelaGrupo titulo="Por plano" grupos={porPlano} />
           <TabelaGrupo titulo="Por método de pagamento" grupos={porMetodo} comTaxa campoTaxa="taxaMetodo" rotuloTaxa="Taxa método/mês" />
         </div>
@@ -173,10 +173,13 @@ function TabelaGrupo({
         <thead>
           <tr>
             <th>Nome</th>
-            {comTaxa && <th>Taxa</th>}
+            {comTaxa && <th className="hidden md:table-cell">Taxa</th>}
             <th className="num">Ativos</th>
-            <th className="num">Bruto/mês</th>
-            <th className="num">{rotuloTaxa}</th>
+            <th className="num hidden sm:table-cell">Bruto/mês</th>
+            <th className="num">
+              <span className="sm:hidden">Taxa/mês</span>
+              <span className="hidden sm:inline">{rotuloTaxa}</span>
+            </th>
             <th className="num">Líquido/mês</th>
           </tr>
         </thead>
@@ -184,9 +187,9 @@ function TabelaGrupo({
           {grupos.map((g) => (
             <tr key={g.nome}>
               <td className="font-medium">{g.nome}</td>
-              {comTaxa && <td className="text-slate-500">{g.detalhe}</td>}
+              {comTaxa && <td className="hidden text-slate-500 md:table-cell">{g.detalhe}</td>}
               <td className="num">{g.quantidade}</td>
-              <td className="num">{formatarMoeda(g.total.bruto)}</td>
+              <td className="num hidden sm:table-cell">{formatarMoeda(g.total.bruto)}</td>
               <td className="num text-slate-500">− {formatarMoeda(g.total[campoTaxa])}</td>
               <td className="num font-semibold text-emerald-700">{formatarMoeda(g.total.liquido)}</td>
             </tr>

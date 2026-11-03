@@ -5,7 +5,7 @@ import { useActionState, useState } from "react";
 import { AreaTexto, Campo, Erro, Selecao } from "@/components/form";
 import { calcularLiquido, type Periodicidade, type Taxa } from "@/lib/finance";
 import { descreverTaxa, formatarMoeda } from "@/lib/format";
-import { STATUS, sufixoPeriodicidade } from "@/lib/labels";
+import { rotuloPeriodicidade, STATUS, sufixoPeriodicidade } from "@/lib/labels";
 import type { EstadoForm } from "@/lib/validations";
 
 export type OpcaoPlano = { id: number; nome: string; valorCentavos: number; periodicidade: Periodicidade; ativo: boolean };
@@ -145,7 +145,7 @@ export function AssinanteForm({
                 As taxas consomem todo o valor desta assinatura.
               </p>
             )}
-            <p className="pt-1 text-xs text-slate-500">Cobrança {sufixoPeriodicidade(plano.periodicidade).slice(1)}.</p>
+            <p className="pt-1 text-xs text-slate-500">Cobrança {rotuloPeriodicidade(plano.periodicidade).toLowerCase()}.</p>
           </dl>
         ) : (
           <p className="mt-2 text-sm text-slate-500">Escolha plano, plataforma e método para ver o valor líquido.</p>
