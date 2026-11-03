@@ -14,8 +14,8 @@ import {
   type EstadoForm,
 } from "@/lib/validations";
 
-const ERRO_EMAIL_GERENTE = "Este e-mail já é usado pelo gerente.";
-const ERRO_EMAIL_DUPLICADO = "Já existe um mestre com este e-mail.";
+const ERRO_USUARIO_GERENTE = "Este usuário já é usado pelo gerente.";
+const ERRO_USUARIO_DUPLICADO = "Já existe um mestre com este usuário.";
 
 /** Campos sem senha, para devolver ao formulário em caso de erro. */
 function valoresSemSenha(formData: FormData) {
@@ -24,8 +24,8 @@ function valoresSemSenha(formData: FormData) {
   return valores;
 }
 
-async function emailDoGerente(email: string) {
-  return !!(await prisma.gerente.findUnique({ where: { email }, select: { id: true } }));
+async function usuarioDoGerente(usuario: string) {
+  return !!(await prisma.gerente.findUnique({ where: { usuario }, select: { id: true } }));
 }
 
 export async function criarMestre(_: EstadoForm, formData: FormData): Promise<EstadoForm> {
@@ -33,13 +33,13 @@ export async function criarMestre(_: EstadoForm, formData: FormData): Promise<Es
   const r = validar(mestreCriarSchema, formData);
   if (!r.ok) return r.estado;
   const valores = valoresSemSenha(formData);
-  if (await emailDoGerente(r.dados.email)) return { erros: { email: [ERRO_EMAIL_GERENTE] }, valores };
+  if (await usuarioDoGerente(r.dados.usuario)) return { erros: { usuario: [ERRO_USUARIO_GERENTE] }, valores };
 
   const { senha, ...dados } = r.dados;
   try {
     await prisma.mestre.create({ data: { ...dados, senhaHash: await bcrypt.hash(senha, 12) } });
   } catch (e) {
-    const erro = erroDeUnicidade(e, valores, "email", ERRO_EMAIL_DUPLICADO);
+    const erro = erroDeUnicidade(e, valores, "usuario", ERRO_USUARIO_DUPLICADO);
     if (erro) return erro;
     throw e;
   }
@@ -52,7 +52,7 @@ export async function atualizarMestre(id: number, _: EstadoForm, formData: FormD
   const r = validar(mestreEditarSchema, formData);
   if (!r.ok) return r.estado;
   const valores = valoresSemSenha(formData);
-  if (await emailDoGerente(r.dados.email)) return { erros: { email: [ERRO_EMAIL_GERENTE] }, valores };
+  if (await usuarioDoGerente(r.dados.usuario)) return { erros: { usuario: [ERRO_USUARIO_GERENTE] }, valores };
 
   const { senha, ...dados } = r.dados;
   try {
@@ -61,7 +61,7 @@ export async function atualizarMestre(id: number, _: EstadoForm, formData: FormD
       data: { ...dados, ...(senha ? { senhaHash: await bcrypt.hash(senha, 12) } : {}) },
     });
   } catch (e) {
-    const erro = erroDeUnicidade(e, valores, "email", ERRO_EMAIL_DUPLICADO);
+    const erro = erroDeUnicidade(e, valores, "usuario", ERRO_USUARIO_DUPLICADO);
     if (erro) return erro;
     throw e;
   }

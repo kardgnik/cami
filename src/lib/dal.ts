@@ -26,7 +26,7 @@ export const exigirMestre = cache(async () => {
   if (sessao.perfil !== "mestre") redirect(inicioDoPerfil(sessao.perfil));
   const mestre = await prisma.mestre.findUnique({
     where: { id: sessao.id },
-    select: { id: true, nome: true, email: true, ativo: true },
+    select: { id: true, nome: true, usuario: true, ativo: true },
   });
   if (!mestre || !mestre.ativo) redirect("/login?inativo=1");
   return mestre;

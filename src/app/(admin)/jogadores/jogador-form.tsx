@@ -25,8 +25,8 @@ export function JogadorForm({
     <form action={enviar} className="cartao space-y-5 p-6">
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo rotulo="Nome" name="nome" required defaultValue={v.nome} erros={estado.erros?.nome} className="sm:col-span-2" />
-        <Campo rotulo="E-mail" name="email" type="email" required defaultValue={v.email} erros={estado.erros?.email} />
-        <Campo rotulo="Telefone (opcional)" name="telefone" type="tel" defaultValue={v.telefone} erros={estado.erros?.telefone} />
+        <Campo rotulo="Telefone" name="telefone" type="tel" required defaultValue={v.telefone} erros={estado.erros?.telefone} />
+        <Campo rotulo="E-mail (opcional)" name="email" type="email" defaultValue={v.email} erros={estado.erros?.email} />
         <AreaTexto
           rotulo="Observações (opcional)"
           name="observacoes"

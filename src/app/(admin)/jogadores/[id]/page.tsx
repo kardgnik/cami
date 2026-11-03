@@ -38,7 +38,7 @@ export default async function Page(props: PageProps<"/jogadores/[id]">) {
     <>
       <Cabecalho
         titulo={jogador.nome}
-        descricao={jogador.email}
+        descricao={[jogador.telefone, jogador.email].filter(Boolean).join(" · ") || undefined}
         voltar={{ href: "/jogadores", rotulo: "Jogadores" }}
         acoes={
           <form action={excluirJogador.bind(null, jogador.id)}>
@@ -59,8 +59,8 @@ export default async function Page(props: PageProps<"/jogadores/[id]">) {
             acao={atualizarJogador.bind(null, jogador.id)}
             inicial={{
               nome: jogador.nome,
-              email: jogador.email,
-              telefone: jogador.telefone ?? "",
+              email: jogador.email ?? "",
+              telefone: jogador.telefone,
               observacoes: jogador.observacoes ?? "",
             }}
           />

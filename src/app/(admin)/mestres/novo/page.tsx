@@ -10,7 +10,7 @@ export default async function Page() {
   return (
     <>
       <Cabecalho titulo="Novo mestre" voltar={{ href: "/mestres", rotulo: "Mestres" }} />
-      <MestreForm acao={criarMestre} novo inicial={{ nome: "", email: "", telefone: "", chavePix: "" }} />
+      <MestreForm acao={criarMestre} novo inicial={{ nome: "", usuario: "", email: "", telefone: "", chavePix: "" }} />
     </>
   );
 }

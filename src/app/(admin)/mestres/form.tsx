@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { Campo, Erro } from "@/components/form";
-import type { EstadoForm } from "@/lib/validations";
+import { REGRA_USUARIO, type EstadoForm } from "@/lib/validations";
 
-type Valores = { nome: string; email: string; telefone: string; chavePix: string };
+type Valores = { nome: string; usuario: string; email: string; telefone: string; chavePix: string };
 
 export function MestreForm({
   acao,
@@ -23,13 +23,15 @@ export function MestreForm({
       <Campo rotulo="Nome" name="nome" required defaultValue={v.nome} erros={estado.erros?.nome} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo
-          rotulo="E-mail"
-          name="email"
-          type="email"
+          rotulo="Usuário (para entrar no sistema)"
+          name="usuario"
           required
           autoComplete="off"
-          defaultValue={v.email}
-          erros={estado.erros?.email}
+          autoCapitalize="none"
+          spellCheck={false}
+          defaultValue={v.usuario}
+          erros={estado.erros?.usuario}
+          ajuda={REGRA_USUARIO}
         />
         <Campo
           rotulo={novo ? "Senha inicial" : "Nova senha"}
@@ -41,11 +43,12 @@ export function MestreForm({
           erros={estado.erros?.senha}
           ajuda={
             novo
-              ? "O mestre usa este e-mail e senha em /login. Mínimo de 8 caracteres."
+              ? "O mestre usa este usuário e senha em /login. Mínimo de 8 caracteres."
               : "Deixe em branco para manter a senha atual."
           }
         />
         <Campo rotulo="Telefone (opcional)" name="telefone" type="tel" defaultValue={v.telefone} erros={estado.erros?.telefone} />
+        <Campo rotulo="E-mail (opcional)" name="email" type="email" autoComplete="off" defaultValue={v.email} erros={estado.erros?.email} />
         <Campo
           rotulo="Chave Pix (opcional)"
           name="chavePix"

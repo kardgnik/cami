@@ -16,8 +16,10 @@ Há dois acessos, pela mesma tela de login:
 
 | Perfil | Acesso |
 |---|---|
-| Gerente | Painel completo. Criado pelo `npm run db:seed` com `ADMIN_EMAIL` e `ADMIN_PASSWORD`. |
-| Mestre | `/mestre`: registra sessões, vê as próprias mesas e quanto tem a receber, troca a senha. O gerente cria o acesso em "Mestres". Não vê nenhum dado financeiro da empresa. |
+| Gerente | Painel completo. Criado pelo `npm run db:seed` com `ADMIN_USUARIO` e `ADMIN_PASSWORD`. |
+| Mestre | `/mestre`: registra sessões, vê as próprias mesas e quanto tem a receber, troca a senha. O gerente cria o acesso (usuário e senha) em "Mestres". Não vê nenhum dado financeiro da empresa. |
+
+O login é por **nome de usuário** (letras minúsculas, números, ponto, hífen ou sublinhado), não por e-mail. E-mail é opcional em todo o sistema. No cadastro de jogador, nome e telefone são obrigatórios.
 
 ## Como o valor líquido é calculado
 
@@ -63,7 +65,7 @@ O `instalar.bat`:
 
 1. Confere o **Node.js** (20.9+) e, se faltar, oferece instalar com o `winget`.
 2. Pergunta onde o banco vai rodar: **Docker Desktop**, um **PostgreSQL já instalado** (cria o usuário e o banco `cami`) ou **instala o PostgreSQL 16** pelo `winget`.
-3. Pede o **e-mail e a senha do gerente** e cria o `.env`, com segredos gerados automaticamente.
+3. Pede o **usuário e a senha do gerente** e cria o `.env`, com segredos gerados automaticamente.
 4. Instala as dependências, cria as tabelas, cadastra o gerente e os dados iniciais e gera o build.
 
 O `atualizar.bat` confere se o sistema está fechado e se não há arquivos alterados na pasta. Em seguida faz **backup do banco** em `backups\` (guarda os 10 mais recentes), roda `git pull`, atualiza as dependências, aplica as migrações e gera o build de novo.
@@ -82,7 +84,7 @@ Requisitos: Node.js 20.9 ou mais recente e Docker (ou um PostgreSQL já instalad
    docker compose up -d
    ```
 
-2. Copie o arquivo de ambiente e ajuste os valores. Defina pelo menos `SESSION_SECRET`, `ADMIN_EMAIL` e `ADMIN_PASSWORD`.
+2. Copie o arquivo de ambiente e ajuste os valores. Defina pelo menos `SESSION_SECRET`, `ADMIN_USUARIO` e `ADMIN_PASSWORD`.
 
    ```bash
    cp .env.example .env
@@ -112,9 +114,25 @@ Requisitos: Node.js 20.9 ou mais recente e Docker (ou um PostgreSQL já instalad
    npm run dev
    ```
 
-Acesse http://localhost:3000 e entre com o `ADMIN_EMAIL` e o `ADMIN_PASSWORD` do `.env`.
+Acesse http://localhost:3000 e entre com o `ADMIN_USUARIO` e o `ADMIN_PASSWORD` do `.env`.
 
-Para trocar a senha do gerente, altere `ADMIN_PASSWORD` no `.env` e rode `npm run db:seed` de novo. Rodar o seed outra vez não sobrescreve taxas que você já ajustou.
+Para trocar o usuário ou a senha do gerente, altere `ADMIN_USUARIO`/`ADMIN_PASSWORD` no `.env` e rode `npm run db:seed` de novo (ou o `atualizar.bat`). Se houver um único gerente, o seed o renomeia em vez de criar outro. Rodar o seed outra vez não sobrescreve taxas que você já ajustou.
+
+Instalações feitas antes do login por usuário tinham `ADMIN_EMAIL` no `.env`. Nesse caso o usuário do gerente passa a ser a parte antes do `@` (ex.: `gerente@empresa.com` → `gerente`), e o mesmo vale para os mestres já cadastrados.
+
+## Acesso pela internet (Cloudflare Tunnel)
+
+Para acessar por um subdomínio (ex.: `https://mdl.luisk.com.br`) sem abrir portas no roteador:
+
+1. O DNS do domínio precisa estar na Cloudflare. Os registros que já apontam para outros servidores continuam funcionando.
+2. No painel da Cloudflare: **Zero Trust → Networks → Tunnels → Create a tunnel → Cloudflared**. Dê um nome e copie o comando `cloudflared.exe service install <token>`.
+3. Rode esse comando no **PowerShell como Administrador**, no computador onde o sistema está instalado. Isso instala o túnel como serviço do Windows.
+4. Em **Public Hostname**: subdomínio `mdl`, domínio `luisk.com.br`, serviço `HTTP` → `localhost:3000`.
+5. Deixe o `iniciar.bat` rodando.
+
+Se, pelo domínio, os formulários falharem com "Invalid Server Actions request" na janela do `iniciar.bat`, adicione `DOMINIO_PUBLICO="mdl.luisk.com.br"` ao `.env` e rode o `atualizar.bat` (o build precisa ser refeito).
+
+Se todos acessarem só pelo domínio (https), você pode trocar para `COOKIE_SECURE="true"` no `.env` e reiniciar. O acesso por `http://localhost` continua funcionando.
 
 ## Scripts
 
@@ -133,7 +151,7 @@ Para trocar a senha do gerente, altere `ADMIN_PASSWORD` no `.env` e rode `npm ru
 
 Funciona em qualquer hospedagem de Next.js com um PostgreSQL acessível. Por exemplo, Vercel com Neon ou Supabase:
 
-1. Crie o banco e configure `DATABASE_URL`, `SESSION_SECRET`, `ADMIN_EMAIL` e `ADMIN_PASSWORD` nas variáveis de ambiente da hospedagem.
+1. Crie o banco e configure `DATABASE_URL`, `SESSION_SECRET`, `ADMIN_USUARIO` e `ADMIN_PASSWORD` nas variáveis de ambiente da hospedagem.
 2. Rode `npm run db:deploy` e `npm run db:seed` apontando para o banco de produção.
 3. Faça o deploy. O `postinstall` gera o cliente Prisma durante o build.
 

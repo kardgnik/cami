@@ -6,26 +6,26 @@ import { prisma } from "@/lib/db";
 import { criarSessao, encerrarSessao, inicioDoPerfil, type Perfil } from "@/lib/session";
 import { loginSchema, validar, type EstadoForm } from "@/lib/validations";
 
-// Hash fixo usado quando o e-mail não existe, para o tempo de resposta não revelar isso.
+// Hash fixo usado quando o usuário não existe, para o tempo de resposta não revelar isso.
 const HASH_FALSO = "$2b$12$.eNcQYiOR77ta.L66jy3WuV7DzjYK9zaJ7p/vaZouuha0dYAPANB2";
 
-/** Procura o e-mail entre gerentes e, depois, entre mestres ativos. */
-async function buscarConta(email: string): Promise<{ perfil: Perfil; id: number; senhaHash: string } | null> {
-  const gerente = await prisma.gerente.findUnique({ where: { email } });
+/** Procura o usuário entre gerentes e, depois, entre mestres ativos. */
+async function buscarConta(usuario: string): Promise<{ perfil: Perfil; id: number; senhaHash: string } | null> {
+  const gerente = await prisma.gerente.findUnique({ where: { usuario } });
   if (gerente) return { perfil: "gerente", id: gerente.id, senhaHash: gerente.senhaHash };
-  const mestre = await prisma.mestre.findUnique({ where: { email } });
+  const mestre = await prisma.mestre.findUnique({ where: { usuario } });
   if (mestre?.ativo) return { perfil: "mestre", id: mestre.id, senhaHash: mestre.senhaHash };
   return null;
 }
 
 export async function entrar(_: EstadoForm, formData: FormData): Promise<EstadoForm> {
   const r = validar(loginSchema, formData);
-  if (!r.ok) return { ...r.estado, valores: { email: r.estado.valores?.email ?? "" } };
+  if (!r.ok) return { ...r.estado, valores: { usuario: r.estado.valores?.usuario ?? "" } };
 
-  const conta = await buscarConta(r.dados.email);
+  const conta = await buscarConta(r.dados.usuario);
   const senhaOk = await bcrypt.compare(r.dados.senha, conta?.senhaHash ?? HASH_FALSO);
   if (!conta || !senhaOk) {
-    return { mensagem: "E-mail ou senha incorretos.", valores: { email: r.dados.email } };
+    return { mensagem: "Usuário ou senha incorretos.", valores: { usuario: r.dados.usuario } };
   }
 
   await criarSessao(conta.perfil, conta.id);

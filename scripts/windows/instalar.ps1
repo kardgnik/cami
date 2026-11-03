@@ -124,10 +124,11 @@ function ConfigurarBanco {
 
 function PedirGerente {
     Titulo 'Login do gerente'
+    $regra = '^[a-z0-9._-]{3,40}$'
     do {
-        $email = Perguntar 'E-mail do gerente (usado para entrar no painel)' 'gerente@empresa.com'
-        if ($email -notmatch '^[^@\s]+@[^@\s]+\.[^@\s]+$') { Aviso 'E-mail inválido.' }
-    } while ($email -notmatch '^[^@\s]+@[^@\s]+\.[^@\s]+$')
+        $usuario = (Perguntar 'Usuário do gerente (para entrar no painel)' 'admin').ToLower()
+        if ($usuario -cnotmatch $regra) { Aviso 'Use de 3 a 40 letras minúsculas, números, ponto, hífen ou sublinhado (sem espaços nem acentos).' }
+    } while ($usuario -cnotmatch $regra)
 
     while ($true) {
         $senha = LerSenha 'Senha do gerente (mínimo 8 caracteres)'
@@ -137,7 +138,7 @@ function PedirGerente {
         if ($senha -ne $confirmacao) { Aviso 'As senhas não conferem.'; continue }
         break
     }
-    return @{ Email = $email.ToLower(); Senha = $senha }
+    return @{ Usuario = $usuario; Senha = $senha }
 }
 
 function CriarEnv {
@@ -156,7 +157,7 @@ DATABASE_URL="$($banco.Url)"
 SESSION_SECRET="$(NovoSegredo)"
 
 # Login do gerente. Para trocar a senha, altere aqui e rode o atualizar.bat (ou: npm run db:seed).
-ADMIN_EMAIL="$($gerente.Email)"
+ADMIN_USUARIO="$($gerente.Usuario)"
 ADMIN_PASSWORD='$($gerente.Senha)'
 
 # Instalação local: permite entrar por http:// a partir de outros aparelhos da rede (ex.: celular dos mestres).
@@ -205,7 +206,9 @@ try {
     Info 'Para abrir o sistema, use o iniciar.bat (nesta mesma pasta).'
     Info "Endereço neste computador: http://localhost:$Porta"
     foreach ($ip in EnderecosNaRede) { Info "Na rede local (celular dos mestres): http://${ip}:$Porta" }
-    Info "Login do gerente: $($cfg['ADMIN_EMAIL'])"
+    $usuarioGerente = $cfg['ADMIN_USUARIO']
+    if (-not $usuarioGerente) { $usuarioGerente = ($cfg['ADMIN_EMAIL'] -split '@')[0] }
+    Info "Login do gerente: usuário '$usuarioGerente'"
     Info 'Para atualizar no futuro, use o atualizar.bat.'
 
     if (Confirmar 'Iniciar o sistema agora?') {

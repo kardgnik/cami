@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   assinaturaSchema,
+  jogadorSchema,
+  loginSchema,
+  mestreCriarSchema,
   mesaSchema,
   mestreEditarSchema,
   planoSchema,
@@ -58,7 +61,7 @@ describe("validações", () => {
   });
 
   it("mestre: senha vazia na edição mantém a atual; curta é rejeitada", () => {
-    const base = { nome: "M", email: "m@x.com" };
+    const base = { nome: "M", usuario: "mestre.m" };
     const r = validar(mestreEditarSchema, fd({ ...base, senha: "" }));
     expect(r.ok && r.dados.senha).toBeNull();
     const curta = validar(mestreEditarSchema, fd({ ...base, senha: "123" }));
@@ -70,5 +73,34 @@ describe("validações", () => {
     const r = validar(trocarSenhaSchema, fd({ senhaAtual: "a", novaSenha: "12345678", confirmacao: "87654321" }));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.estado.erros?.confirmacao).toBeDefined();
+  });
+});
+
+describe("login por usuário", () => {
+  it("usuário do mestre: minúsculo, sem espaços nem acentos", () => {
+    const ok = validar(mestreCriarSchema, fd({ nome: "Rafael", usuario: " Rafa.Mestre_1 ", senha: "12345678" }));
+    expect(ok.ok && ok.dados.usuario).toBe("rafa.mestre_1");
+    expect(ok.ok && ok.dados.email).toBeNull();
+    for (const ruim of ["ra", "rafa mestre", "joão", "a".repeat(41)]) {
+      const r = validar(mestreCriarSchema, fd({ nome: "R", usuario: ruim, senha: "12345678" }));
+      expect(r.ok, ruim).toBe(false);
+    }
+  });
+
+  it("login normaliza o usuário", () => {
+    const r = validar(loginSchema, fd({ usuario: " Admin ", senha: "x" }));
+    expect(r.ok && r.dados.usuario).toBe("admin");
+  });
+});
+
+describe("jogador", () => {
+  it("telefone obrigatório, e-mail opcional", () => {
+    const r = validar(jogadorSchema, fd({ nome: "Ana", telefone: "(11) 99999-0000", email: "" }));
+    expect(r.ok && r.dados).toMatchObject({ telefone: "(11) 99999-0000", email: null });
+    const semTel = validar(jogadorSchema, fd({ nome: "Ana", telefone: "" }));
+    expect(semTel.ok).toBe(false);
+    if (!semTel.ok) expect(semTel.estado.erros?.telefone).toBeDefined();
+    expect(validar(jogadorSchema, fd({ nome: "Ana", telefone: "123" })).ok).toBe(false);
+    expect(validar(jogadorSchema, fd({ nome: "Ana", telefone: "11999990000", email: "nao-e-email" })).ok).toBe(false);
   });
 });

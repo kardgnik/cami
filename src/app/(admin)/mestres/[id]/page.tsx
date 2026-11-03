@@ -18,6 +18,7 @@ export default async function Page(props: PageProps<"/mestres/[id]">) {
     select: {
       id: true,
       nome: true,
+      usuario: true,
       email: true,
       telefone: true,
       chavePix: true,
@@ -45,7 +46,7 @@ export default async function Page(props: PageProps<"/mestres/[id]">) {
     <>
       <Cabecalho
         titulo={mestre.nome}
-        descricao={mestre.email}
+        descricao={`Usuário: ${mestre.usuario}`}
         voltar={{ href: "/mestres", rotulo: "Mestres" }}
         acoes={
           <Link href={`/sessoes?mestreId=${mestre.id}`} className="btn-secundario">
@@ -67,7 +68,8 @@ export default async function Page(props: PageProps<"/mestres/[id]">) {
         novo={false}
         inicial={{
           nome: mestre.nome,
-          email: mestre.email,
+          usuario: mestre.usuario,
+          email: mestre.email ?? "",
           telefone: mestre.telefone ?? "",
           chavePix: mestre.chavePix ?? "",
         }}

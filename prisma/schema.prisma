@@ -23,10 +23,10 @@ enum StatusAssinatura {
   CANCELADO
 }
 
-/// Administrador do sistema.
+/// Administrador do sistema. Entra com nome de usuário e senha.
 model Gerente {
   id        Int      @id @default(autoincrement())
-  email     String   @unique
+  usuario   String   @unique
   senhaHash String
   createdAt DateTime @default(now())
 
@@ -79,8 +79,8 @@ model Plano {
 model Jogador {
   id          Int          @id @default(autoincrement())
   nome        String
-  email       String
-  telefone    String?
+  telefone    String
+  email       String?
   observacoes String?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
@@ -144,11 +144,12 @@ model TipoMesa {
   @@map("tipos_mesa")
 }
 
-/// Quem conduz as mesas. Acessa o painel do mestre com e-mail e senha.
+/// Quem conduz as mesas. Acessa o painel do mestre com nome de usuário e senha.
 model Mestre {
   id        Int      @id @default(autoincrement())
   nome      String
-  email     String   @unique
+  usuario   String   @unique
+  email     String?
   senhaHash String
   telefone  String?
   chavePix  String?

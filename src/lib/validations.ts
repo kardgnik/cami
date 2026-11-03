@@ -48,7 +48,29 @@ function inteiro(rotulo: string, min: number, max: number) {
 }
 
 const nome = z.string().trim().min(1, "Informe o nome.").max(120, "Nome muito longo.");
-const email = z.string().trim().toLowerCase().pipe(z.email("E-mail inválido."));
+
+/** Nome de usuário para login: minúsculas, números, ponto, hífen e sublinhado. */
+export const REGRA_USUARIO = "De 3 a 40 caracteres: letras minúsculas, números, ponto, hífen ou sublinhado (sem espaços nem acentos).";
+const usuario = z
+  .string({ error: "Informe o nome de usuário." })
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9._-]{3,40}$/, REGRA_USUARIO);
+
+const emailOpcional = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .optional()
+  .transform((v) => (v ? v : null))
+  .pipe(z.email("E-mail inválido.").nullable());
+
+const telefoneObrigatorio = z
+  .string({ error: "Informe o telefone." })
+  .trim()
+  .min(1, "Informe o telefone.")
+  .max(40, "Telefone muito longo.")
+  .refine((v) => v.replace(/\D/g, "").length >= 8, "Telefone inválido: informe ao menos 8 dígitos.");
 
 const textoOpcional = (max: number) =>
   z
@@ -98,8 +120,8 @@ export const planoSchema = z.object({
 
 export const jogadorSchema = z.object({
   nome,
-  email,
-  telefone: textoOpcional(40),
+  telefone: telefoneObrigatorio,
+  email: emailOpcional,
   observacoes: textoOpcional(1000),
 });
 
@@ -134,7 +156,8 @@ export const mesaSchema = z.object({
 
 const mestreBase = {
   nome,
-  email,
+  usuario,
+  email: emailOpcional,
   telefone: textoOpcional(40),
   chavePix: textoOpcional(140),
 };
@@ -176,7 +199,7 @@ export const trocarSenhaSchema = z
   });
 
 export const loginSchema = z.object({
-  email,
+  usuario: z.string().trim().toLowerCase().min(1, "Informe o usuário."),
   senha: z.string().min(1, "Informe a senha."),
 });
 

@@ -15,7 +15,7 @@ export default async function Page() {
   const [mestres, mesasAtivas, sessoesMes, aReceber] = await Promise.all([
     prisma.mestre.findMany({
       orderBy: [{ ativo: "desc" }, { nome: "asc" }],
-      select: { id: true, nome: true, email: true, telefone: true, ativo: true },
+      select: { id: true, nome: true, usuario: true, telefone: true, ativo: true },
     }),
     prisma.mesa.groupBy({ by: ["mestreId"], where: { ativo: true, mestreId: { not: null } }, _count: true }),
     prisma.sessao.groupBy({ by: ["mestreId"], where: { data: { gte: inicio, lt: fim } }, _count: true }),
@@ -67,7 +67,7 @@ export default async function Page() {
                       <Link href={`/mestres/${m.id}`} className="link">
                         {m.nome}
                       </Link>
-                      <p className="text-xs text-slate-500">{m.email}</p>
+                      <p className="text-xs text-slate-500">usuário: {m.usuario}</p>
                     </td>
                     <td>{m.telefone ?? "—"}</td>
                     <td className="num">

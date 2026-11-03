@@ -33,6 +33,7 @@ export default async function Page(props: PageProps<"/jogadores">) {
     OR: q
       ? [
           { nome: { contains: q, mode: "insensitive" } },
+          { telefone: { contains: q } },
           { email: { contains: q, mode: "insensitive" } },
         ]
       : undefined,
@@ -86,7 +87,7 @@ export default async function Page(props: PageProps<"/jogadores">) {
       />
 
       <form method="get" className="cartao mb-4 grid gap-3 p-4 sm:grid-cols-[1fr_14rem_auto]">
-        <input name="q" defaultValue={q} placeholder="Buscar por nome ou e-mail" className="input" aria-label="Buscar" />
+        <input name="q" defaultValue={q} placeholder="Buscar por nome, telefone ou e-mail" className="input" aria-label="Buscar" />
         <select name="status" defaultValue={status ?? ""} className="input" aria-label="Status da assinatura">
           <option value="">Todos os status</option>
           {STATUS.map((s) => (
@@ -140,7 +141,7 @@ export default async function Page(props: PageProps<"/jogadores">) {
                     <Link href={`/jogadores/${j.id}`} className="link">
                       {j.nome}
                     </Link>
-                    <p className="text-xs text-slate-500">{j.email}</p>
+                    <p className="text-xs text-slate-500">{[j.telefone, j.email].filter(Boolean).join(" · ") || "sem telefone"}</p>
                   </td>
                   <td className="max-w-xs">{j.mesas.length ? j.mesas.join(", ") : <span className="text-slate-400">—</span>}</td>
                   <td className="num">{j.ativas}</td>

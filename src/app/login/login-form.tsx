@@ -10,13 +10,15 @@ export function LoginForm({ de }: { de: string }) {
     <form action={acao} className="mt-6 space-y-4">
       <input type="hidden" name="de" value={de} />
       <Campo
-        rotulo="E-mail"
-        name="email"
-        type="email"
+        rotulo="Usuário"
+        name="usuario"
         autoComplete="username"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
         required
-        defaultValue={estado.valores?.email}
-        erros={estado.erros?.email}
+        defaultValue={estado.valores?.usuario as string | undefined}
+        erros={estado.erros?.usuario}
       />
       <Campo
         rotulo="Senha"
