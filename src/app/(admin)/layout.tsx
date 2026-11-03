@@ -8,7 +8,7 @@ export default function AdminLayout({ children }: LayoutProps<"/">) {
       <aside className="border-b border-slate-200 bg-white md:sticky md:top-0 md:h-screen md:w-60 md:shrink-0 md:border-r md:border-b-0">
         <div className="flex h-full flex-col gap-4 p-4">
           <div className="px-2 pt-1">
-            <p className="text-base font-semibold text-slate-900">Assinaturas</p>
+            <p className="text-base font-semibold text-slate-900">Gestão de Mesas</p>
             <p className="text-xs text-slate-500">Painel do gerente</p>
           </div>
           <Suspense fallback={<ListaLinks />}>

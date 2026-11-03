@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { lerDecimal } from "./format";
 
-/** Campo decimal digitado pelo usuário -> inteiro em centésimos. */
+const maiuscula = (s: string) => `${s[0].toUpperCase()}${s.slice(1)}`;
+
+/** Campo decimal digitado pelo usuário -> inteiro em centésimos. Vazio vale 0. */
 function decimal(rotulo: string, { min = 0, max }: { min?: number; max?: number } = {}) {
   return z
     .string({ error: `Informe ${rotulo}.` })
@@ -9,18 +11,44 @@ function decimal(rotulo: string, { min = 0, max }: { min?: number; max?: number 
     .transform((texto, ctx) => {
       const valor = texto === "" ? 0 : lerDecimal(texto);
       if (valor === null) {
-        ctx.addIssue({ code: "custom", message: `${rotulo[0].toUpperCase()}${rotulo.slice(1)} inválido.` });
+        ctx.addIssue({ code: "custom", message: `${maiuscula(rotulo)} inválido.` });
         return z.NEVER;
       }
       if (valor < min || (max !== undefined && valor > max)) {
-        ctx.addIssue({ code: "custom", message: `${rotulo[0].toUpperCase()}${rotulo.slice(1)} fora do limite.` });
+        ctx.addIssue({ code: "custom", message: `${maiuscula(rotulo)} fora do limite.` });
         return z.NEVER;
       }
       return valor;
     });
 }
 
+/** Como `decimal`, mas vazio vira null (campo opcional). */
+function decimalOpcional(rotulo: string) {
+  return z
+    .string()
+    .trim()
+    .optional()
+    .transform((texto, ctx) => {
+      if (!texto) return null;
+      const valor = lerDecimal(texto);
+      if (valor === null) {
+        ctx.addIssue({ code: "custom", message: `${maiuscula(rotulo)} inválido.` });
+        return z.NEVER;
+      }
+      return valor;
+    });
+}
+
+function inteiro(rotulo: string, min: number, max: number) {
+  return z.coerce
+    .number({ error: `Informe ${rotulo}.` })
+    .int(`${maiuscula(rotulo)} deve ser um número inteiro.`)
+    .min(min, `${maiuscula(rotulo)}: mínimo ${min}.`)
+    .max(max, `${maiuscula(rotulo)}: máximo ${max}.`);
+}
+
 const nome = z.string().trim().min(1, "Informe o nome.").max(120, "Nome muito longo.");
+const email = z.string().trim().toLowerCase().pipe(z.email("E-mail inválido."));
 
 const textoOpcional = (max: number) =>
   z
@@ -32,6 +60,24 @@ const textoOpcional = (max: number) =>
 
 const id = (rotulo: string) =>
   z.coerce.number({ error: `Selecione ${rotulo}.` }).int().positive(`Selecione ${rotulo}.`);
+
+/** Select opcional: "" vira null. */
+const idOpcional = z
+  .string()
+  .optional()
+  .transform((v, ctx) => {
+    if (!v) return null;
+    const n = Number(v);
+    if (!Number.isSafeInteger(n) || n <= 0) {
+      ctx.addIssue({ code: "custom", message: "Seleção inválida." });
+      return z.NEVER;
+    }
+    return n;
+  });
+
+const dataISO = z.iso.date("Data inválida.").transform((d) => new Date(`${d}T00:00:00Z`));
+
+const senhaNova = z.string().min(8, "A senha precisa ter ao menos 8 caracteres.").max(200, "Senha muito longa.");
 
 /** Plataforma e método de pagamento têm o mesmo formato: nome + taxa percentual + taxa fixa. */
 export const taxaEntidadeSchema = z.object({
@@ -47,22 +93,90 @@ export const planoSchema = z.object({
   periodicidade: z.enum(["MENSAL", "TRIMESTRAL", "SEMESTRAL", "ANUAL"], {
     error: "Selecione a periodicidade.",
   }),
+  limiteMesas: inteiro("o número de mesas", 1, 50),
 });
 
-export const assinanteSchema = z.object({
+export const jogadorSchema = z.object({
   nome,
-  email: z.string().trim().toLowerCase().pipe(z.email("E-mail inválido.")),
+  email,
   telefone: textoOpcional(40),
-  status: z.enum(["ATIVO", "INADIMPLENTE", "CANCELADO"], { error: "Selecione o status." }),
-  dataInicio: z.iso.date("Data inválida.").transform((d) => new Date(`${d}T00:00:00Z`)),
   observacoes: textoOpcional(1000),
+});
+
+/** `mesaIds` vem de checkboxes com name="mesaIds[]". */
+export const assinaturaSchema = z.object({
   planoId: id("o plano"),
   plataformaId: id("a plataforma"),
   metodoPagamentoId: id("o método de pagamento"),
+  status: z.enum(["ATIVO", "INADIMPLENTE", "CANCELADO"], { error: "Selecione o status." }),
+  dataInicio: dataISO,
+  observacoes: textoOpcional(1000),
+  mesaIds: z
+    .array(z.coerce.number().int().positive())
+    .default([])
+    .transform((ids) => [...new Set(ids)]),
 });
 
+export const tipoMesaSchema = z.object({
+  nome,
+  valorSessaoCentavos: decimal("o valor por sessão"),
+});
+
+export const mesaSchema = z.object({
+  nome,
+  descricao: textoOpcional(500),
+  tipoMesaId: id("o tipo de mesa"),
+  mestreId: idOpcional,
+  valorSessaoCentavos: decimalOpcional("o valor por sessão"),
+  sessoesPorMes: inteiro("sessões por mês", 0, 31),
+  capacidade: inteiro("a capacidade", 1, 50),
+});
+
+const mestreBase = {
+  nome,
+  email,
+  telefone: textoOpcional(40),
+  chavePix: textoOpcional(140),
+};
+
+/** Ao criar, a senha inicial é obrigatória. */
+export const mestreCriarSchema = z.object({ ...mestreBase, senha: senhaNova });
+
+/** Ao editar, senha vazia mantém a atual. */
+export const mestreEditarSchema = z.object({
+  ...mestreBase,
+  senha: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v : null))
+    .pipe(senhaNova.nullable()),
+});
+
+/** Sessão registrada pelo mestre (o mestre vem da sessão de login). */
+export const sessaoSchema = z.object({
+  mesaId: id("a mesa"),
+  data: dataISO,
+  observacoes: textoOpcional(500),
+});
+
+/** Sessão registrada pelo gerente em nome de um mestre. */
+export const sessaoAdminSchema = sessaoSchema.extend({
+  mestreId: id("o mestre"),
+});
+
+export const trocarSenhaSchema = z
+  .object({
+    senhaAtual: z.string().min(1, "Informe a senha atual."),
+    novaSenha: senhaNova,
+    confirmacao: z.string(),
+  })
+  .refine((d) => d.novaSenha === d.confirmacao, {
+    path: ["confirmacao"],
+    message: "As senhas não conferem.",
+  });
+
 export const loginSchema = z.object({
-  email: z.string().trim().toLowerCase().pipe(z.email("E-mail inválido.")),
+  email,
   senha: z.string().min(1, "Informe a senha."),
 });
 
@@ -70,29 +184,54 @@ export const loginSchema = z.object({
 export type EstadoForm = {
   erros?: Record<string, string[] | undefined>;
   mensagem?: string;
-  valores?: Record<string, string>;
+  /** Mensagem de sucesso (para formulários que não redirecionam). */
+  sucesso?: string;
+  valores?: Record<string, string | string[]>;
 };
+
+/**
+ * Lê um FormData como objeto. Campos com nome terminado em "[]" (checkboxes,
+ * selects múltiplos) viram arrays com o nome sem o sufixo; os demais, strings.
+ */
+export function lerFormulario(formData: FormData): Record<string, string | string[]> {
+  const obj: Record<string, string | string[]> = {};
+  for (const [chave, valor] of formData.entries()) {
+    if (chave.startsWith("$") || typeof valor !== "string") continue;
+    if (chave.endsWith("[]")) {
+      const k = chave.slice(0, -2);
+      obj[k] = [...((obj[k] as string[] | undefined) ?? []), valor];
+    } else {
+      obj[chave] = valor;
+    }
+  }
+  return obj;
+}
 
 /** Valida um FormData e devolve os dados ou um EstadoForm com os erros e o que foi digitado. */
 export function validar<T extends z.ZodType>(
   schema: T,
   formData: FormData,
 ): { ok: true; dados: z.output<T> } | { ok: false; estado: EstadoForm } {
-  const bruto = Object.fromEntries(
-    [...formData.entries()].filter(([k, v]) => !k.startsWith("$") && typeof v === "string"),
-  ) as Record<string, string>;
+  const bruto = lerFormulario(formData);
   const r = schema.safeParse(bruto);
   if (r.success) return { ok: true, dados: r.data };
+  // não devolve senhas digitadas para o navegador
+  const valores = Object.fromEntries(Object.entries(bruto).filter(([k]) => !/senha|confirmacao/i.test(k)));
   return {
     ok: false,
-    estado: { erros: z.flattenError(r.error).fieldErrors as EstadoForm["erros"], valores: bruto },
+    estado: { erros: z.flattenError(r.error).fieldErrors as EstadoForm["erros"], valores },
   };
 }
 
-/** Converte erro de nome duplicado (P2002) em mensagem amigável. */
-export function erroDeUnicidade(e: unknown, valores: Record<string, string>): EstadoForm | null {
+/** Converte erro de unicidade (P2002) em mensagem amigável no campo indicado. */
+export function erroDeUnicidade(
+  e: unknown,
+  valores: Record<string, string | string[]>,
+  campo = "nome",
+  mensagem = "Já existe um cadastro com este nome.",
+): EstadoForm | null {
   if (typeof e === "object" && e !== null && "code" in e && (e as { code: string }).code === "P2002") {
-    return { erros: { nome: ["Já existe um cadastro com este nome."] }, valores };
+    return { erros: { [campo]: [mensagem] }, valores };
   }
   return null;
 }

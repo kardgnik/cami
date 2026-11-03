@@ -5,8 +5,12 @@ import { usePathname } from "next/navigation";
 
 const LINKS = [
   { href: "/", rotulo: "Visão geral" },
-  { href: "/assinantes", rotulo: "Assinantes" },
+  { href: "/jogadores", rotulo: "Jogadores" },
+  { href: "/mesas", rotulo: "Mesas" },
+  { href: "/mestres", rotulo: "Mestres" },
+  { href: "/sessoes", rotulo: "Sessões e pagamentos" },
   { href: "/planos", rotulo: "Planos" },
+  { href: "/tipos-mesa", rotulo: "Tipos de mesa" },
   { href: "/plataformas", rotulo: "Plataformas" },
   { href: "/metodos-pagamento", rotulo: "Métodos de pagamento" },
 ] as const;

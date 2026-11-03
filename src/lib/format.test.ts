@@ -43,7 +43,7 @@ describe("formatação", () => {
 
 describe("hojeISO", () => {
   it("usa o fuso de Brasília", async () => {
-    const { hojeISO } = await import("./format");
+    const { hojeISO } = await import("./datas");
     // 02:00 UTC de 4/11 ainda é 23:00 de 3/11 em Brasília
     expect(hojeISO(new Date("2026-11-04T02:00:00Z"))).toBe("2026-11-03");
   });

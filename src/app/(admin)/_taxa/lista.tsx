@@ -11,7 +11,7 @@ export type LinhaTaxa = {
   taxaPercentualBp: number;
   taxaFixaCentavos: number;
   ativo: boolean;
-  _count: { assinantes: number };
+  _count: { assinaturas: number };
 };
 
 export function ListaTaxa({
@@ -45,7 +45,7 @@ export function ListaTaxa({
                 <th>Nome</th>
                 <th>Taxa</th>
                 <th className="num">Taxa em R$ 100</th>
-                <th className="num">Assinantes</th>
+                <th className="num">Assinaturas</th>
                 <th>Status</th>
                 <th className="text-right">Ações</th>
               </tr>
@@ -56,7 +56,7 @@ export function ListaTaxa({
                   <td className="font-medium">{l.nome}</td>
                   <td>{descreverTaxa(l)}</td>
                   <td className="num">{formatarMoeda(calcularTaxa(10_000, l))}</td>
-                  <td className="num">{l._count.assinantes}</td>
+                  <td className="num">{l._count.assinaturas}</td>
                   <td>
                     <SeloAtivo ativo={l.ativo} />
                   </td>
@@ -79,7 +79,7 @@ export function ListaTaxa({
         )}
       </div>
       <p className="mt-3 text-xs text-slate-500">
-        Desativar não apaga: assinantes existentes continuam vinculados, mas {c.artigo} {c.singular} deixa de aparecer
+        Desativar não apaga: assinaturas existentes continuam vinculadas, mas {c.artigo} {c.singular} deixa de aparecer
         para novos cadastros.
       </p>
     </>

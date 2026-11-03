@@ -9,7 +9,7 @@ export default async function Page() {
   await exigirGerente();
   const linhas = await prisma.plataforma.findMany({
     orderBy: [{ ativo: "desc" }, { nome: "asc" }],
-    include: { _count: { select: { assinantes: true } } },
+    include: { _count: { select: { assinaturas: true } } },
   });
   return <ListaTaxa tipo="plataforma" linhas={linhas} alternar={alternarPlataforma} />;
 }

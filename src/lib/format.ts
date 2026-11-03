@@ -71,8 +71,5 @@ export function paraInputData(data: Date): string {
   return data.toISOString().slice(0, 10);
 }
 
-/** Data de hoje (fuso de Brasília) no formato "AAAA-MM-DD". */
-export function hojeISO(agora: Date = new Date()): string {
-  // en-CA formata como AAAA-MM-DD
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(agora);
-}
+
+export { hojeISO } from "./datas";

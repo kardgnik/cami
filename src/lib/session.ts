@@ -5,7 +5,8 @@ import { cookies } from "next/headers";
 const COOKIE = "sessao";
 const DURACAO_MS = 7 * 24 * 60 * 60 * 1000;
 
-export type Sessao = { gerenteId: number; expiraEm: string };
+export type Perfil = "gerente" | "mestre";
+export type Sessao = { perfil: Perfil; id: number; expiraEm: string };
 
 function chave() {
   const segredo = process.env.SESSION_SECRET;
@@ -27,16 +28,17 @@ export async function lerToken(token: string | undefined): Promise<Sessao | null
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, chave(), { algorithms: ["HS256"] });
-    if (typeof payload.gerenteId !== "number") return null;
-    return { gerenteId: payload.gerenteId, expiraEm: String(payload.expiraEm) };
+    if (typeof payload.id !== "number") return null;
+    if (payload.perfil !== "gerente" && payload.perfil !== "mestre") return null;
+    return { perfil: payload.perfil, id: payload.id, expiraEm: String(payload.expiraEm) };
   } catch {
     return null;
   }
 }
 
-export async function criarSessao(gerenteId: number) {
+export async function criarSessao(perfil: Perfil, id: number) {
   const expiraEm = new Date(Date.now() + DURACAO_MS);
-  const token = await assinar({ gerenteId, expiraEm: expiraEm.toISOString() });
+  const token = await assinar({ perfil, id, expiraEm: expiraEm.toISOString() });
   (await cookies()).set(COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -55,3 +57,8 @@ export async function encerrarSessao() {
 }
 
 export const NOME_COOKIE_SESSAO = COOKIE;
+
+/** Página inicial de cada perfil. */
+export function inicioDoPerfil(perfil: Perfil) {
+  return perfil === "mestre" ? "/mestre" : "/";
+}

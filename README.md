@@ -1,18 +1,27 @@
-# Gestão de Assinaturas
+# Gestão de Mesas
 
-Painel web para o gerente de uma empresa controlar assinaturas:
+Sistema para administrar mesas de RPG por assinatura: jogadores, assinaturas, mesas, mestres, sessões e pagamentos.
 
-- **Planos**: nome, valor por cobrança e periodicidade (mensal, trimestral, semestral ou anual).
-- **Plataformas**: de onde vêm os assinantes, cada uma com taxa percentual e/ou valor fixo por cobrança.
-- **Métodos de pagamento**: Pix, cartão, boleto etc., com uma taxa própria que se soma à da plataforma.
-- **Assinantes**: plano, plataforma de origem, método de pagamento e status. Mostra o valor bruto, as taxas e o **valor líquido** de cada assinante.
-- **Visão geral**: receita bruta, taxas e receita líquida por mês, separadas por plataforma, plano e método.
+## Como funciona
 
-Só o gerente tem acesso, com login por e-mail e senha.
+- **Jogadores** são os assinantes. Um jogador pode ter **uma ou mais assinaturas**.
+- **Assinatura**: plano + plataforma de origem + método de pagamento. Cada assinatura cobre **até N mesas**, conforme o plano (campo "mesas incluídas").
+- **Mesas** são de um **tipo** (VIP ou Especial). Cada mesa tem um **mestre**, vários jogadores (capacidade padrão de 6) e uma previsão de sessões por mês (padrão 2).
+- **Mestres** recebem por sessão conduzida. O valor por sessão é definido no **tipo de mesa** (padrão R$ 35,00) e pode ser **personalizado em cada mesa**.
+- **Sessões**: o mestre registra no **painel do mestre** e a sessão já entra como "a receber". O valor é gravado no momento do registro, então mudanças de preço posteriores não alteram o histórico. O gerente **marca como paga** em "Sessões e pagamentos", uma por uma ou todas de um mestre no mês.
+- **Plataformas** e **métodos de pagamento** têm taxa percentual e/ou fixa, descontada de cada cobrança.
+- **Visão geral** mostra **entrada e saída**: receita líquida das assinaturas (já sem taxas), custo previsto e real com mestres, valor a pagar aos mestres e o resultado do mês.
+
+Há dois acessos, pela mesma tela de login:
+
+| Perfil | Acesso |
+|---|---|
+| Gerente | Painel completo. Criado pelo `npm run db:seed` com `ADMIN_EMAIL` e `ADMIN_PASSWORD`. |
+| Mestre | `/mestre`: registra sessões, vê as próprias mesas e quanto tem a receber, troca a senha. O gerente cria o acesso em "Mestres". Não vê nenhum dado financeiro da empresa. |
 
 ## Como o valor líquido é calculado
 
-Para cada cobrança de um assinante:
+Para cada cobrança de uma assinatura:
 
 ```
 taxa da plataforma = valor do plano × % da plataforma + valor fixo da plataforma
@@ -20,13 +29,15 @@ taxa do método     = valor do plano × % do método     + valor fixo do método
 líquido            = valor do plano − taxa da plataforma − taxa do método
 ```
 
-Exemplo: plano de R$ 100,00 vendido pela plataforma com taxa de 4,99% + R$ 0,40 e pago via Pix (sem taxa). A taxa é R$ 5,39 e o líquido fica em **R$ 94,61**.
+Exemplo: plano de R$ 100,00 vendido pela plataforma com taxa de 4,99% + R$ 0,40 e pago via Pix (sem taxa). A taxa é R$ 5,39 e o líquido fica em **R$ 94,61**. Se esse jogador está numa mesa VIP com 2 sessões por mês a R$ 35,00, o custo com o mestre é R$ 70,00 por mês.
 
 Regras do cálculo:
 
 - O percentual é arredondado ao centavo a cada cobrança.
 - Na visão geral, planos não mensais são convertidos para o equivalente mensal. Um plano anual, por exemplo, é dividido por 12.
-- As taxas usam sempre a configuração atual. Se a taxa de uma plataforma mudar, o líquido de todos os assinantes dela muda junto. O sistema não guarda histórico de cobranças.
+- Custo previsto com mestres por mês = Σ (valor por sessão da mesa × sessões por mês) das mesas ativas que têm mestre.
+- Resultado previsto = receita líquida mensal − custo previsto com mestres.
+- As taxas usam sempre a configuração atual. Se a taxa de uma plataforma mudar, o líquido de todas as assinaturas dela muda junto. O sistema não guarda histórico de cobranças dos jogadores (só das sessões dos mestres).
 
 A regra está em [`src/lib/finance.ts`](src/lib/finance.ts) e é coberta por testes em [`src/lib/finance.test.ts`](src/lib/finance.test.ts).
 
@@ -66,7 +77,7 @@ Requisitos: Node.js 20.9 ou mais recente e Docker (ou um PostgreSQL já instalad
    npm run db:migrate
    ```
 
-5. Crie o login do gerente. O seed também cadastra Pix, Cartão de crédito, Boleto e a plataforma "Venda direta", todos sem taxa.
+5. Crie o login do gerente. O seed também cadastra Pix, Cartão de crédito, Boleto e a plataforma "Venda direta" (todos sem taxa) e os tipos de mesa VIP e Especial (R$ 35,00 por sessão).
 
    ```bash
    npm run db:seed
@@ -109,19 +120,21 @@ Em produção o cookie de sessão é marcado como `Secure`, então o site precis
 
 ```
 prisma/
-  schema.prisma        modelos: Gerente, Plano, Plataforma, MetodoPagamento, Assinante
+  schema.prisma        modelos: Gerente, Mestre, Jogador, Assinatura, Mesa, TipoMesa, Sessao, Plano, Plataforma, MetodoPagamento
   migrations/          migrações SQL
   seed.ts              gerente + cadastros iniciais
 src/
-  proxy.ts             redireciona para /login quem não tem sessão
+  proxy.ts             redireciona para /login quem não tem sessão e separa gerente/mestre
   lib/
     finance.ts         cálculo de taxas e valor líquido (funções puras)
     format.ts          moeda, percentual e leitura de números em pt-BR
     validations.ts     schemas Zod dos formulários
-    session.ts, dal.ts sessão e verificação do gerente em páginas e actions
+    datas.ts           mês atual e intervalos no fuso de Brasília
+    session.ts, dal.ts sessão e verificação de gerente/mestre em páginas e actions
   app/
     login/             tela de login
-    (admin)/           painel (visão geral, assinantes, planos, plataformas, métodos)
+    (admin)/           painel do gerente (visão geral, jogadores, mesas, mestres, sessões, planos...)
+    mestre/            painel do mestre
 ```
 
 Valores monetários ficam no banco em **centavos** e percentuais em **pontos-base** (4,99% = 499), sempre como inteiros, para evitar erros de arredondamento.

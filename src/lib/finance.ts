@@ -75,3 +75,19 @@ export function liquidoMensal(r: ResultadoLiquido, periodicidade: Periodicidade)
     liquido: bruto - totalTaxas,
   };
 }
+
+/** Valor pago ao mestre por sessão: o da mesa, se definido, senão o do tipo da mesa. */
+export function valorSessaoDaMesa(
+  mesa: { valorSessaoCentavos: number | null },
+  tipo: { valorSessaoCentavos: number },
+): number {
+  return mesa.valorSessaoCentavos ?? tipo.valorSessaoCentavos;
+}
+
+/** Custo mensal previsto de uma mesa com o mestre: valor por sessão × sessões por mês. */
+export function custoMensalPrevistoDaMesa(
+  mesa: { valorSessaoCentavos: number | null; sessoesPorMes: number },
+  tipo: { valorSessaoCentavos: number },
+): number {
+  return valorSessaoDaMesa(mesa, tipo) * mesa.sessoesPorMes;
+}

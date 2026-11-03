@@ -7,8 +7,8 @@ type ComRelacoes = {
   metodoPagamento: Taxa;
 };
 
-/** Valores por cobrança e equivalente mensal de um assinante, com as taxas atuais. */
-export function financeiroDoAssinante(a: ComRelacoes): { porCobranca: ResultadoLiquido; mensal: ResultadoLiquido } {
+/** Valores por cobrança e equivalente mensal de uma assinatura, com as taxas atuais. */
+export function financeiroDaAssinatura(a: ComRelacoes): { porCobranca: ResultadoLiquido; mensal: ResultadoLiquido } {
   const porCobranca = calcularLiquido(a.plano.valorCentavos, a.plataforma, a.metodoPagamento);
   return { porCobranca, mensal: liquidoMensal(porCobranca, a.plano.periodicidade) };
 }

@@ -17,12 +17,13 @@ enum Periodicidade {
   ANUAL
 }
 
-enum StatusAssinante {
+enum StatusAssinatura {
   ATIVO
   INADIMPLENTE
   CANCELADO
 }
 
+/// Administrador do sistema.
 model Gerente {
   id        Int      @id @default(autoincrement())
   email     String   @unique
@@ -33,27 +34,27 @@ model Gerente {
 }
 
 model Plataforma {
-  id                Int         @id @default(autoincrement())
-  nome              String      @unique
-  taxaPercentualBp  Int         @default(0)
-  taxaFixaCentavos  Int         @default(0)
-  ativo             Boolean     @default(true)
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-  assinantes        Assinante[]
+  id               Int          @id @default(autoincrement())
+  nome             String       @unique
+  taxaPercentualBp Int          @default(0)
+  taxaFixaCentavos Int          @default(0)
+  ativo            Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  assinaturas      Assinatura[]
 
   @@map("plataformas")
 }
 
 model MetodoPagamento {
-  id                Int         @id @default(autoincrement())
-  nome              String      @unique
-  taxaPercentualBp  Int         @default(0)
-  taxaFixaCentavos  Int         @default(0)
-  ativo             Boolean     @default(true)
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-  assinantes        Assinante[]
+  id               Int          @id @default(autoincrement())
+  nome             String       @unique
+  taxaPercentualBp Int          @default(0)
+  taxaFixaCentavos Int          @default(0)
+  ativo            Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  assinaturas      Assinatura[]
 
   @@map("metodos_pagamento")
 }
@@ -64,35 +65,146 @@ model Plano {
   descricao     String?
   valorCentavos Int
   periodicidade Periodicidade @default(MENSAL)
+  /// Quantas mesas uma assinatura deste plano pode incluir.
+  limiteMesas   Int           @default(1)
   ativo         Boolean       @default(true)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
-  assinantes    Assinante[]
+  assinaturas   Assinatura[]
 
   @@map("planos")
 }
 
-model Assinante {
-  id                Int             @id @default(autoincrement())
-  nome              String
-  email             String
-  telefone          String?
-  status            StatusAssinante @default(ATIVO)
-  dataInicio        DateTime        @db.Date
-  observacoes       String?
+/// A pessoa que joga. Pode ter várias assinaturas.
+model Jogador {
+  id          Int          @id @default(autoincrement())
+  nome        String
+  email       String
+  telefone    String?
+  observacoes String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  assinaturas Assinatura[]
+
+  @@index([nome])
+  @@map("jogadores")
+}
+
+/// O que o jogador paga: plano + plataforma de origem + método de pagamento.
+/// Cobre até `plano.limiteMesas` mesas.
+model Assinatura {
+  id                Int              @id @default(autoincrement())
+  jogadorId         Int
   planoId           Int
   plataformaId      Int
   metodoPagamentoId Int
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  status            StatusAssinatura @default(ATIVO)
+  dataInicio        DateTime         @db.Date
+  observacoes       String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
+  jogador         Jogador         @relation(fields: [jogadorId], references: [id], onDelete: Cascade)
   plano           Plano           @relation(fields: [planoId], references: [id], onDelete: Restrict)
   plataforma      Plataforma      @relation(fields: [plataformaId], references: [id], onDelete: Restrict)
   metodoPagamento MetodoPagamento @relation(fields: [metodoPagamentoId], references: [id], onDelete: Restrict)
+  mesas           AssinaturaMesa[]
 
+  @@index([jogadorId])
   @@index([status])
   @@index([planoId])
   @@index([plataformaId])
   @@index([metodoPagamentoId])
-  @@map("assinantes")
+  @@map("assinaturas")
+}
+
+/// Vínculo de uma assinatura (e portanto de um jogador) com uma mesa.
+model AssinaturaMesa {
+  assinaturaId Int
+  mesaId       Int
+  createdAt    DateTime @default(now())
+
+  assinatura Assinatura @relation(fields: [assinaturaId], references: [id], onDelete: Cascade)
+  mesa       Mesa       @relation(fields: [mesaId], references: [id], onDelete: Restrict)
+
+  @@id([assinaturaId, mesaId])
+  @@index([mesaId])
+  @@map("assinaturas_mesas")
+}
+
+/// VIP, Especial... Define o valor padrão pago ao mestre por sessão.
+model TipoMesa {
+  id                  Int      @id @default(autoincrement())
+  nome                String   @unique
+  valorSessaoCentavos Int
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  mesas               Mesa[]
+
+  @@map("tipos_mesa")
+}
+
+/// Quem conduz as mesas. Acessa o painel do mestre com e-mail e senha.
+model Mestre {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  email     String   @unique
+  senhaHash String
+  telefone  String?
+  chavePix  String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  mesas     Mesa[]
+  sessoes   Sessao[]
+
+  @@map("mestres")
+}
+
+model Mesa {
+  id                  Int              @id @default(autoincrement())
+  nome                String           @unique
+  descricao           String?
+  tipoMesaId          Int
+  mestreId            Int?
+  /// Se preenchido, substitui o valor por sessão do tipo da mesa.
+  valorSessaoCentavos Int?
+  /// Sessões previstas por mês (usado na previsão de custo com mestres).
+  sessoesPorMes       Int              @default(2)
+  capacidade          Int              @default(6)
+  ativo               Boolean          @default(true)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  tipoMesa    TipoMesa         @relation(fields: [tipoMesaId], references: [id], onDelete: Restrict)
+  mestre      Mestre?          @relation(fields: [mestreId], references: [id], onDelete: SetNull)
+  assinaturas AssinaturaMesa[]
+  sessoes     Sessao[]
+
+  @@index([mestreId])
+  @@index([tipoMesaId])
+  @@map("mesas")
+}
+
+/// Uma sessão conduzida por um mestre. O valor é gravado no registro para que
+/// mudanças de preço posteriores não alterem o histórico.
+model Sessao {
+  id            Int       @id @default(autoincrement())
+  mesaId        Int
+  mestreId      Int
+  data          DateTime  @db.Date
+  valorCentavos Int
+  observacoes   String?
+  /// Preenchido quando o gerente marca a sessão como paga.
+  pagoEm        DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  mesa   Mesa   @relation(fields: [mesaId], references: [id], onDelete: Restrict)
+  mestre Mestre @relation(fields: [mestreId], references: [id], onDelete: Restrict)
+
+  @@unique([mesaId, data])
+  @@index([mestreId, pagoEm])
+  @@index([data])
+  @@map("sessoes")
 }

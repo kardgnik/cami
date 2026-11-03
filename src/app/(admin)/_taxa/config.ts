@@ -7,7 +7,7 @@ export const CONFIG_TAXA = {
     plural: "Plataformas",
     novo: "Nova plataforma",
     artigo: "a",
-    descricao: "De onde vêm os assinantes. A taxa da plataforma é descontada de cada cobrança.",
+    descricao: "De onde vêm os jogadores. A taxa da plataforma é descontada de cada cobrança.",
   },
   metodoPagamento: {
     caminho: "/metodos-pagamento",

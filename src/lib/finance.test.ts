@@ -72,3 +72,13 @@ describe("equivalente mensal", () => {
     expect(m.bruto - m.totalTaxas).toBe(m.liquido);
   });
 });
+
+describe("custo com mestres", () => {
+  it("usa o valor da mesa quando definido, senão o do tipo", async () => {
+    const { valorSessaoDaMesa, custoMensalPrevistoDaMesa } = await import("./finance");
+    const vip = { valorSessaoCentavos: 3_500 };
+    expect(valorSessaoDaMesa({ valorSessaoCentavos: null }, vip)).toBe(3_500);
+    expect(valorSessaoDaMesa({ valorSessaoCentavos: 4_000 }, vip)).toBe(4_000);
+    expect(custoMensalPrevistoDaMesa({ valorSessaoCentavos: null, sessoesPorMes: 2 }, vip)).toBe(7_000);
+  });
+});

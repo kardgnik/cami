@@ -27,7 +27,10 @@ async function main() {
     await prisma.metodoPagamento.upsert({ where: { nome }, update: {}, create: { nome } });
   }
   await prisma.plataforma.upsert({ where: { nome: "Venda direta" }, update: {}, create: { nome: "Venda direta" } });
-  console.log("Métodos de pagamento e plataforma padrão garantidos.");
+  for (const nome of ["VIP", "Especial"]) {
+    await prisma.tipoMesa.upsert({ where: { nome }, update: {}, create: { nome, valorSessaoCentavos: 3_500 } });
+  }
+  console.log("Métodos de pagamento, plataforma e tipos de mesa (VIP, Especial) padrão garantidos.");
 }
 
 main()
