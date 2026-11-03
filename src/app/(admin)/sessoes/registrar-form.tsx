@@ -1,58 +1,45 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
-import { AreaTexto, Campo, Erro, Selecao } from "@/components/form";
-import { formatarMoeda } from "@/lib/format";
+import { useActionState, useRef } from "react";
+import { CamposSessao, type OpcaoMesaSessao } from "@/components/campos-sessao";
+import { Erro, Selecao } from "@/components/form";
+import type { EstadoForm } from "@/lib/validations";
 import { registrarSessao } from "./actions";
 
-export type OpcaoMesaSessao = { id: number; nome: string; mestreId: number | null; valorCentavos: number };
 export type OpcaoMestreSessao = { id: number; nome: string };
 
 export function RegistrarSessaoForm({
   mesas,
   mestres,
   hoje,
+  valorOneshotCentavos,
 }: {
   mesas: OpcaoMesaSessao[];
   mestres: OpcaoMestreSessao[];
   hoje: string;
+  valorOneshotCentavos: number;
 }) {
-  const [estado, enviar, pendente] = useActionState(registrarSessao, {});
-  const v = { mesaId: "", mestreId: "", data: hoje, observacoes: "", ...estado.valores } as Record<string, string>;
+  const [estado, enviar, pendente] = useActionState(registrarSessao, {} as EstadoForm);
   const mestreRef = useRef<HTMLSelectElement>(null);
-  const [mesaId, setMesaId] = useState(v.mesaId);
-  const mesa = mesas.find((m) => String(m.id) === mesaId);
+  const mestreInicial = typeof estado.valores?.mestreId === "string" ? estado.valores.mestreId : "";
 
   return (
-    <form
-      action={enviar}
-      className="cartao space-y-4 p-5"
-      // após sucesso o React limpa os campos; zera também a prévia do valor
-      key={estado.sucesso ?? "form"}
-    >
+    // após sucesso a key muda e o formulário volta limpo
+    <form action={enviar} className="cartao space-y-4 p-5" key={estado.sucesso ?? "form"}>
       <h2 className="text-sm font-semibold text-slate-900">Registrar sessão</h2>
       <p className="-mt-2 text-xs text-slate-500">Lançamento do gerente em nome de um mestre.</p>
-      <Selecao
-        rotulo="Mesa"
-        name="mesaId"
-        required
-        defaultValue={v.mesaId}
-        erros={estado.erros?.mesaId}
-        onChange={(e) => {
-          const id = e.currentTarget.value;
-          setMesaId(id);
-          const escolhida = mesas.find((m) => String(m.id) === id);
-          if (escolhida?.mestreId && mestreRef.current) mestreRef.current.value = String(escolhida.mestreId);
+      <CamposSessao
+        estado={estado}
+        mesas={mesas}
+        hoje={hoje}
+        valorOneshotCentavos={valorOneshotCentavos}
+        rotuloValor="Valor a pagar ao mestre"
+        onMesa={(m) => {
+          // pré-seleciona o mestre da mesa escolhida
+          if (m?.mestreId && mestreRef.current) mestreRef.current.value = String(m.mestreId);
         }}
-      >
-        <option value="">Selecione...</option>
-        {mesas.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.nome}
-          </option>
-        ))}
-      </Selecao>
-      <Selecao ref={mestreRef} rotulo="Mestre" name="mestreId" required defaultValue={v.mestreId} erros={estado.erros?.mestreId}>
+      />
+      <Selecao ref={mestreRef} rotulo="Mestre" name="mestreId" required defaultValue={mestreInicial} erros={estado.erros?.mestreId}>
         <option value="">Selecione...</option>
         {mestres.map((m) => (
           <option key={m.id} value={m.id}>
@@ -60,13 +47,6 @@ export function RegistrarSessaoForm({
           </option>
         ))}
       </Selecao>
-      <Campo rotulo="Data" name="data" type="date" required max={hoje} defaultValue={v.data} erros={estado.erros?.data} />
-      <AreaTexto rotulo="Observações (opcional)" name="observacoes" defaultValue={v.observacoes} erros={estado.erros?.observacoes} />
-      {mesa && (
-        <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
-          Valor a pagar ao mestre: <strong className="text-slate-900">{formatarMoeda(mesa.valorCentavos)}</strong>
-        </p>
-      )}
       <Erro mensagem={estado.mensagem} />
       {estado.sucesso && (
         <p role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">

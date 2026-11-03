@@ -82,3 +82,15 @@ describe("custo com mestres", () => {
     expect(custoMensalPrevistoDaMesa({ valorSessaoCentavos: null, sessoesPorMes: 2 }, vip)).toBe(7_000);
   });
 });
+
+describe("valor da sessão por tipo", () => {
+  it("normal, reposição e extra = valor da mesa; dupla = dobro; oneshot = configurado", async () => {
+    const { valorDaSessao } = await import("./finance");
+    expect(valorDaSessao("NORMAL", 3_500, 3_000)).toBe(3_500);
+    expect(valorDaSessao("REPOSICAO", 3_500, 3_000)).toBe(3_500);
+    expect(valorDaSessao("EXTRA", 3_500, 3_000)).toBe(3_500);
+    expect(valorDaSessao("DUPLA", 3_500, 3_000)).toBe(7_000);
+    expect(valorDaSessao("ONESHOT", null, 3_000)).toBe(3_000);
+    expect(() => valorDaSessao("NORMAL", null, 3_000)).toThrow();
+  });
+});

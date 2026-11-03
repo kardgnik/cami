@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
+import { BotaoExcluir } from "@/components/botao-excluir";
 import { Cabecalho } from "@/components/ui";
 import { exigirGerente } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { paraInput } from "@/lib/format";
-import { atualizarMetodo } from "../../_taxa/actions";
+import { atualizarMetodo, excluirMetodo } from "../../_taxa/actions";
 import { CONFIG_TAXA } from "../../_taxa/config";
 import { TaxaForm } from "../../_taxa/form";
 
@@ -18,7 +19,16 @@ export default async function Page(props: PageProps<"/metodos-pagamento/[id]">) 
 
   return (
     <>
-      <Cabecalho titulo={`Editar método: ${item.nome}`} voltar={{ href: c.caminho, rotulo: c.plural }} />
+      <Cabecalho
+        titulo={`Editar método: ${item.nome}`}
+        voltar={{ href: c.caminho, rotulo: c.plural }}
+        acoes={
+          <BotaoExcluir
+            acao={excluirMetodo.bind(null, item.id)}
+            confirmacao={`Excluir o método ${item.nome}? Esta ação não pode ser desfeita.`}
+          />
+        }
+      />
       <TaxaForm
         acao={atualizarMetodo.bind(null, item.id)}
         voltarPara={c.caminho}

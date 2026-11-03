@@ -2,7 +2,9 @@ import Link from "next/link";
 import { Cabecalho, Vazio } from "@/components/ui";
 import { exigirGerente } from "@/lib/dal";
 import { prisma } from "@/lib/db";
-import { formatarMoeda } from "@/lib/format";
+import { formatarMoeda, paraInput } from "@/lib/format";
+import { valorOneshot } from "@/lib/sessoes";
+import { OneshotForm } from "./oneshot-form";
 
 export const metadata = { title: "Tipos de mesa · Gestão de Mesas" };
 
@@ -17,7 +19,7 @@ export default async function Page() {
     <>
       <Cabecalho
         titulo="Tipos de mesa"
-        descricao="Valor padrão pago ao mestre por sessão em cada tipo de mesa."
+        descricao="Valor padrão pago ao mestre por sessão em cada tipo de mesa (sessão dupla paga o dobro) e por oneshot."
         acoes={
           <Link href="/tipos-mesa/novo" className="btn-primario">
             + Novo tipo
@@ -70,6 +72,7 @@ export default async function Page() {
         Mesas sem valor próprio usam o valor do seu tipo. Mudar o valor afeta só as sessões registradas daqui em diante:
         o valor fica gravado em cada sessão no momento do registro.
       </p>
+      <OneshotForm valorInicial={paraInput(await valorOneshot())} />
     </>
   );
 }

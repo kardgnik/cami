@@ -56,7 +56,8 @@ async function main() {
   for (const nome of ["VIP", "Especial"]) {
     await prisma.tipoMesa.upsert({ where: { nome }, update: {}, create: { nome, valorSessaoCentavos: 3_500 } });
   }
-  console.log("Métodos de pagamento, plataforma e tipos de mesa (VIP, Especial) padrão garantidos.");
+  await prisma.configuracao.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
+  console.log("Métodos de pagamento, plataforma, tipos de mesa (VIP, Especial) e configurações padrão garantidos.");
 }
 
 main()

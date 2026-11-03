@@ -1,12 +1,14 @@
 import { BotaoConfirmar } from "@/components/botao-confirmar";
 import { SeletorMes } from "@/components/seletor-mes";
-import { Cabecalho, Indicador, SeloSessao, Vazio } from "@/components/ui";
+import { Cabecalho, DescricaoSessao, Indicador, SeloSessao, Vazio } from "@/components/ui";
+import { nomeDaSessao } from "@/lib/labels";
 import { exigirMestre } from "@/lib/dal";
 import { hojeISO, intervaloDoMes, lerMes, mesAtual, rotuloMes } from "@/lib/datas";
 import { prisma } from "@/lib/db";
 import { valorSessaoDaMesa } from "@/lib/finance";
 import { formatarData, formatarMoeda } from "@/lib/format";
 import { excluirSessao } from "./actions";
+import { valorOneshot } from "@/lib/sessoes";
 import { SessaoForm } from "./sessao-form";
 
 export default async function Page(props: PageProps<"/mestre">) {
@@ -46,9 +48,10 @@ export default async function Page(props: PageProps<"/mestre">) {
   const opcoes = mesas.map((m) => ({
     id: m.id,
     nome: m.nome,
-    tipo: m.tipoMesa.nome,
-    valorSessaoCentavos: valorSessaoDaMesa(m, m.tipoMesa),
+    detalhe: m.tipoMesa.nome,
+    valorCentavos: valorSessaoDaMesa(m, m.tipoMesa),
   }));
+  const valorDaOneshot = await valorOneshot();
 
   return (
     <>
@@ -56,23 +59,23 @@ export default async function Page(props: PageProps<"/mestre">) {
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Indicador rotulo="A receber" valor={formatarMoeda(aReceber._sum.valorCentavos ?? 0)} destaque="ambar">
-          {aReceber._count} sessão{aReceber._count === 1 ? "" : "ões"} ainda não paga{aReceber._count === 1 ? "" : "s"}
+          {aReceber._count} {aReceber._count === 1 ? "sessão ainda não paga" : "sessões ainda não pagas"}
         </Indicador>
         <Indicador rotulo={`Sessões em ${rotulo}`} valor={formatarMoeda(totalMes)}>
-          {sessoes.length} sessão{sessoes.length === 1 ? "" : "ões"}
+          {sessoes.length} {sessoes.length === 1 ? "sessão" : "sessões"}
         </Indicador>
         <Indicador rotulo={`Recebido em ${rotulo}`} valor={formatarMoeda(pagoMes)} destaque="verde" />
       </div>
 
       <section className="cartao mt-6 p-5">
         <h2 className="mb-4 text-base font-semibold text-slate-900">Registrar sessão</h2>
-        {opcoes.length === 0 ? (
-          <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Você ainda não tem mesas. Peça ao gerente para vincular você a uma mesa.
+        {opcoes.length === 0 && (
+          <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Você ainda não tem mesas: por enquanto só é possível registrar oneshots. Peça ao gerente para vincular você a uma
+            mesa.
           </p>
-        ) : (
-          <SessaoForm mesas={opcoes} hoje={hojeISO()} />
         )}
+        <SessaoForm mesas={opcoes} hoje={hojeISO()} valorOneshotCentavos={valorDaOneshot} />
       </section>
 
       <section className="mt-6">
@@ -101,7 +104,7 @@ export default async function Page(props: PageProps<"/mestre">) {
                   <tr key={s.id}>
                     <td className="whitespace-nowrap">{formatarData(s.data)}</td>
                     <td>
-                      {s.mesa.nome}
+                      <DescricaoSessao sessao={s} />
                       {s.observacoes && <p className="max-w-xs truncate text-xs text-slate-500">{s.observacoes}</p>}
                     </td>
                     <td className="num">{formatarMoeda(s.valorCentavos)}</td>
@@ -113,7 +116,7 @@ export default async function Page(props: PageProps<"/mestre">) {
                         <form action={excluirSessao.bind(null, s.id)}>
                           <BotaoConfirmar
                             className="btn-perigo"
-                            confirmacao={`Excluir a sessão de ${formatarData(s.data)} (${s.mesa.nome})?`}
+                            confirmacao={`Excluir a sessão de ${formatarData(s.data)} (${nomeDaSessao(s)})?`}
                           >
                             Excluir
                           </BotaoConfirmar>

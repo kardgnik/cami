@@ -175,16 +175,60 @@ export const mestreEditarSchema = z.object({
     .pipe(senhaNova.nullable()),
 });
 
-/** Sessão registrada pelo mestre (o mestre vem da sessão de login). */
-export const sessaoSchema = z.object({
-  mesaId: id("a mesa"),
+const camposSessao = {
+  tipo: z.enum(["NORMAL", "REPOSICAO", "EXTRA", "DUPLA", "ONESHOT"], { error: "Selecione o tipo de sessão." }),
+  /** Mesa: obrigatória, exceto em oneshot (ignorada nesse caso). */
+  mesaId: idOpcional,
+  nomeOneshot: textoOpcional(120),
   data: dataISO,
+  /** Reposição: data da sessão original. Opcional no campo, exigida pela regra abaixo. */
+  dataReferencia: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v : null))
+    .pipe(dataISO.nullable()),
   observacoes: textoOpcional(500),
-});
+};
+
+type DadosSessao = {
+  tipo: string;
+  mesaId: number | null;
+  nomeOneshot: string | null;
+  data: Date;
+  dataReferencia: Date | null;
+};
+
+/** Regras que dependem do tipo: mesa x oneshot e a data de referência da reposição. */
+function regrasDaSessao<T extends DadosSessao>(d: T, ctx: z.RefinementCtx): T {
+  if (d.tipo === "ONESHOT") {
+    if (!d.nomeOneshot) ctx.addIssue({ code: "custom", path: ["nomeOneshot"], message: "Informe o nome da oneshot." });
+    d = { ...d, mesaId: null };
+  } else {
+    if (!d.mesaId) ctx.addIssue({ code: "custom", path: ["mesaId"], message: "Selecione a mesa." });
+    d = { ...d, nomeOneshot: null };
+  }
+  if (d.tipo === "REPOSICAO") {
+    if (!d.dataReferencia) {
+      ctx.addIssue({ code: "custom", path: ["dataReferencia"], message: "Informe a data da sessão que está sendo reposta." });
+    } else if (d.dataReferencia.getTime() === d.data.getTime()) {
+      ctx.addIssue({ code: "custom", path: ["dataReferencia"], message: "A data reposta deve ser diferente da data da reposição." });
+    }
+  } else {
+    d = { ...d, dataReferencia: null };
+  }
+  return d;
+}
+
+/** Sessão registrada pelo mestre (o mestre vem da sessão de login). */
+export const sessaoSchema = z.object(camposSessao).transform(regrasDaSessao);
 
 /** Sessão registrada pelo gerente em nome de um mestre. */
-export const sessaoAdminSchema = sessaoSchema.extend({
-  mestreId: id("o mestre"),
+export const sessaoAdminSchema = z
+  .object({ ...camposSessao, mestreId: id("o mestre") })
+  .transform(regrasDaSessao);
+
+export const configuracaoSchema = z.object({
+  valorOneshotCentavos: decimal("o valor da oneshot"),
 });
 
 export const trocarSenhaSchema = z

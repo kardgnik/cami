@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
+import { BotaoExcluir } from "@/components/botao-excluir";
 import { Cabecalho } from "@/components/ui";
 import { exigirGerente } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { paraInput } from "@/lib/format";
-import { atualizarPlataforma } from "../../_taxa/actions";
+import { atualizarPlataforma, excluirPlataforma } from "../../_taxa/actions";
 import { CONFIG_TAXA } from "../../_taxa/config";
 import { TaxaForm } from "../../_taxa/form";
 
@@ -18,7 +19,16 @@ export default async function Page(props: PageProps<"/plataformas/[id]">) {
 
   return (
     <>
-      <Cabecalho titulo={`Editar plataforma: ${item.nome}`} voltar={{ href: c.caminho, rotulo: c.plural }} />
+      <Cabecalho
+        titulo={`Editar plataforma: ${item.nome}`}
+        voltar={{ href: c.caminho, rotulo: c.plural }}
+        acoes={
+          <BotaoExcluir
+            acao={excluirPlataforma.bind(null, item.id)}
+            confirmacao={`Excluir a plataforma ${item.nome}? Esta ação não pode ser desfeita.`}
+          />
+        }
+      />
       <TaxaForm
         acao={atualizarPlataforma.bind(null, item.id)}
         voltarPara={c.caminho}

@@ -62,3 +62,29 @@ export async function atualizarMetodo(id: number, _: EstadoForm, formData: FormD
 export async function alternarMetodo(id: number) {
   return alternar("metodoPagamento", id);
 }
+
+/** Exclui plataforma/método se nenhuma assinatura o usa; senão explica o motivo. */
+async function excluir(tipo: TipoTaxa, id: number): Promise<EstadoForm> {
+  await exigirGerente();
+  const usos =
+    tipo === "plataforma"
+      ? await prisma.assinatura.count({ where: { plataformaId: id } })
+      : await prisma.assinatura.count({ where: { metodoPagamentoId: id } });
+  const c = CONFIG_TAXA[tipo];
+  if (usos > 0) {
+    return {
+      mensagem: `Est${c.artigo === "a" ? "a" : "e"} ${c.singular} é usad${c.artigo} por ${usos} assinatura${usos === 1 ? "" : "s"}. Troque nas assinaturas ou exclua-as antes — ou apenas desative.`,
+    };
+  }
+  if (tipo === "plataforma") await prisma.plataforma.delete({ where: { id } });
+  else await prisma.metodoPagamento.delete({ where: { id } });
+  revalidatePath("/", "layout");
+  redirect(c.caminho);
+}
+
+export async function excluirPlataforma(id: number) {
+  return excluir("plataforma", id);
+}
+export async function excluirMetodo(id: number) {
+  return excluir("metodoPagamento", id);
+}

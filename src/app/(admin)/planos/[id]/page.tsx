@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
+import { BotaoExcluir } from "@/components/botao-excluir";
 import { Cabecalho } from "@/components/ui";
 import { exigirGerente } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { paraInput } from "@/lib/format";
-import { atualizarPlano } from "../actions";
+import { atualizarPlano, excluirPlano } from "../actions";
 import { PlanoForm } from "../form";
 
 export default async function Page(props: PageProps<"/planos/[id]">) {
@@ -14,7 +15,16 @@ export default async function Page(props: PageProps<"/planos/[id]">) {
   if (!plano) notFound();
   return (
     <>
-      <Cabecalho titulo={`Editar plano: ${plano.nome}`} voltar={{ href: "/planos", rotulo: "Planos" }} />
+      <Cabecalho
+        titulo={`Editar plano: ${plano.nome}`}
+        voltar={{ href: "/planos", rotulo: "Planos" }}
+        acoes={
+          <BotaoExcluir
+            acao={excluirPlano.bind(null, plano.id)}
+            confirmacao={`Excluir o plano ${plano.nome}? Esta ação não pode ser desfeita.`}
+          />
+        }
+      />
       <PlanoForm
         acao={atualizarPlano.bind(null, plano.id)}
         inicial={{

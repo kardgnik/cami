@@ -26,3 +26,23 @@ export const STATUS: { valor: Status; rotulo: string }[] = [
 export function rotuloStatus(s: Status) {
   return STATUS.find((x) => x.valor === s)?.rotulo ?? s;
 }
+
+export type TipoSessao = "NORMAL" | "REPOSICAO" | "EXTRA" | "DUPLA" | "ONESHOT";
+
+/** Opções na ordem do formulário que os mestres já usam. */
+export const TIPOS_SESSAO: { valor: TipoSessao; rotulo: string; ajuda: string }[] = [
+  { valor: "NORMAL", rotulo: "Sessão normal", ajuda: "Sessão comum da mesa." },
+  { valor: "REPOSICAO", rotulo: "Reposição", ajuda: "Repõe uma sessão que não aconteceu. Informe a data original." },
+  { valor: "EXTRA", rotulo: "Sessão extra", ajuda: "Sessão a mais da mesa." },
+  { valor: "ONESHOT", rotulo: "Oneshot paga", ajuda: "Aventura avulsa, sem mesa fixa. Informe o nome da oneshot." },
+  { valor: "DUPLA", rotulo: "Sessão dupla", ajuda: "Vale por duas sessões (paga o dobro)." },
+];
+
+export function rotuloTipoSessao(t: TipoSessao) {
+  return TIPOS_SESSAO.find((x) => x.valor === t)?.rotulo ?? t;
+}
+
+/** Nome exibido no lugar da mesa: o nome da mesa ou "Oneshot: <nome>". */
+export function nomeDaSessao(s: { mesa: { nome: string } | null; nomeOneshot: string | null }) {
+  return s.mesa ? s.mesa.nome : `Oneshot: ${s.nomeOneshot ?? "sem nome"}`;
+}

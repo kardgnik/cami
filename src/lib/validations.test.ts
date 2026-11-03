@@ -104,3 +104,34 @@ describe("jogador", () => {
     expect(validar(jogadorSchema, fd({ nome: "Ana", telefone: "11999990000", email: "nao-e-email" })).ok).toBe(false);
   });
 });
+
+describe("tipos de sessão", () => {
+  it("oneshot exige nome e ignora a mesa", async () => {
+    const { sessaoSchema } = await import("./validations");
+    const r = validar(sessaoSchema, fd({ tipo: "ONESHOT", mesaId: "3", nomeOneshot: "A Cripta", data: "2026-11-03" }));
+    expect(r.ok && r.dados).toMatchObject({ mesaId: null, nomeOneshot: "A Cripta", dataReferencia: null });
+    const semNome = validar(sessaoSchema, fd({ tipo: "ONESHOT", data: "2026-11-03" }));
+    expect(!semNome.ok && semNome.estado.erros?.nomeOneshot).toBeTruthy();
+  });
+
+  it("demais tipos exigem mesa", async () => {
+    const { sessaoSchema } = await import("./validations");
+    for (const tipo of ["NORMAL", "EXTRA", "DUPLA"]) {
+      const r = validar(sessaoSchema, fd({ tipo, mesaId: "", data: "2026-11-03" }));
+      expect(!r.ok && r.estado.erros?.mesaId, tipo).toBeTruthy();
+    }
+    const ok = validar(sessaoSchema, fd({ tipo: "DUPLA", mesaId: "2", nomeOneshot: "x", data: "2026-11-03" }));
+    expect(ok.ok && ok.dados).toMatchObject({ mesaId: 2, nomeOneshot: null });
+  });
+
+  it("reposição exige a data reposta, diferente da data realizada", async () => {
+    const { sessaoSchema } = await import("./validations");
+    const base = { tipo: "REPOSICAO", mesaId: "1", data: "2026-11-10" };
+    expect(validar(sessaoSchema, fd(base)).ok).toBe(false);
+    expect(validar(sessaoSchema, fd({ ...base, dataReferencia: "2026-11-10" })).ok).toBe(false);
+    const ok = validar(sessaoSchema, fd({ ...base, dataReferencia: "2026-11-03" }));
+    expect(ok.ok && ok.dados.dataReferencia?.toISOString()).toBe("2026-11-03T00:00:00.000Z");
+    const normal = validar(sessaoSchema, fd({ tipo: "NORMAL", mesaId: "1", data: "2026-11-10", dataReferencia: "2026-11-03" }));
+    expect(normal.ok && normal.dados.dataReferencia).toBeNull();
+  });
+});

@@ -52,3 +52,18 @@ export async function alternarMesa(id: number) {
   await prisma.mesa.update({ where: { id }, data: { ativo: !atual.ativo } });
   revalidatePath("/", "layout");
 }
+
+/**
+ * Exclui a mesa junto com o histórico dela: as sessões registradas (inclusive as
+ * pagas) e os vínculos com assinaturas. As assinaturas e os jogadores continuam.
+ */
+export async function excluirMesa(id: number): Promise<EstadoForm> {
+  await exigirGerente();
+  await prisma.$transaction([
+    prisma.sessao.deleteMany({ where: { mesaId: id } }),
+    prisma.assinaturaMesa.deleteMany({ where: { mesaId: id } }),
+    prisma.mesa.delete({ where: { id } }),
+  ]);
+  revalidatePath("/", "layout");
+  redirect("/mesas");
+}

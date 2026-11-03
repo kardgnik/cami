@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { sair } from "@/app/actions/auth";
+import { AlternarTema } from "@/components/alternar-tema";
 import { LinksMestre, NavMestre } from "./nav";
 
 export const metadata = { title: "Painel do mestre · Gestão de Mesas" };
@@ -17,6 +18,7 @@ export default function MestreLayout({ children }: LayoutProps<"/mestre">) {
             <Suspense fallback={<LinksMestre />}>
               <NavMestre />
             </Suspense>
+            <AlternarTema compacto />
             <form action={sair}>
               <button type="submit" className="btn-secundario">
                 Sair

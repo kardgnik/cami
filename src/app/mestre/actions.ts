@@ -2,13 +2,10 @@
 
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
-import { hojeISO } from "@/lib/datas";
 import { exigirMestre } from "@/lib/dal";
 import { prisma } from "@/lib/db";
-import { valorSessaoDaMesa } from "@/lib/finance";
-import { formatarData, formatarMoeda } from "@/lib/format";
+import { registrarSessaoComRegras } from "@/lib/sessoes";
 import {
-  erroDeUnicidade,
   lerFormulario,
   sessaoSchema,
   trocarSenhaSchema,
@@ -16,44 +13,15 @@ import {
   type EstadoForm,
 } from "@/lib/validations";
 
-/** O mestre registra uma sessão que conduziu numa das suas mesas ativas. */
+/** O mestre registra uma sessão: de uma das suas mesas ativas ou uma oneshot. */
 export async function registrarSessao(_: EstadoForm, formData: FormData): Promise<EstadoForm> {
   const mestre = await exigirMestre();
   const r = validar(sessaoSchema, formData);
   if (!r.ok) return r.estado;
-  const valores = lerFormulario(formData);
-
-  const mesa = await prisma.mesa.findFirst({
-    where: { id: r.dados.mesaId, mestreId: mestre.id, ativo: true },
-    include: { tipoMesa: true },
-  });
-  if (!mesa) return { erros: { mesaId: ["Mesa indisponível."] }, valores };
-
-  if (r.dados.data.toISOString().slice(0, 10) > hojeISO()) {
-    return { erros: { data: ["A data não pode ser no futuro."] }, valores };
-  }
-
-  const valorCentavos = valorSessaoDaMesa(mesa, mesa.tipoMesa);
-  try {
-    await prisma.sessao.create({
-      data: {
-        mesaId: mesa.id,
-        mestreId: mestre.id,
-        data: r.dados.data,
-        valorCentavos,
-        observacoes: r.dados.observacoes,
-      },
-    });
-  } catch (e) {
-    const erro = erroDeUnicidade(e, valores, "data", "Esta mesa já tem sessão registrada nesta data.");
-    if (erro) return erro;
-    throw e;
-  }
-
+  const res = await registrarSessaoComRegras(r.dados, mestre.id, lerFormulario(formData), { mesaDoMestre: true });
+  if (!res.ok) return res.estado;
   revalidatePath("/", "layout");
-  return {
-    sucesso: `Sessão registrada: ${mesa.nome} em ${formatarData(r.dados.data)} — ${formatarMoeda(valorCentavos)}.`,
-  };
+  return { sucesso: res.mensagem };
 }
 
 /** Exclui uma sessão do próprio mestre, desde que ainda não tenha sido paga. */

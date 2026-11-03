@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { BotaoConfirmar, BotaoEnviar } from "@/components/botao-confirmar";
 import { SeletorMes } from "@/components/seletor-mes";
-import { Cabecalho, Indicador, SeloSessao, Vazio } from "@/components/ui";
+import { Cabecalho, DescricaoSessao, Indicador, SeloSessao, Vazio } from "@/components/ui";
+import { nomeDaSessao } from "@/lib/labels";
 import type { Prisma } from "@/generated/prisma/client";
 import { hojeISO, intervaloDoMes, lerMes, mesAtual, rotuloMes } from "@/lib/datas";
 import { exigirGerente } from "@/lib/dal";
@@ -9,6 +10,7 @@ import { prisma } from "@/lib/db";
 import { valorSessaoDaMesa } from "@/lib/finance";
 import { formatarData, formatarMoeda } from "@/lib/format";
 import { desfazerPagamento, excluirSessao, marcarPaga, marcarTodasPagas } from "./actions";
+import { valorOneshot } from "@/lib/sessoes";
 import { RegistrarSessaoForm } from "./registrar-form";
 
 export const metadata = { title: "Sessões e pagamentos · Gestão de Mesas" };
@@ -135,9 +137,16 @@ export default async function Page(props: PageProps<"/sessoes">) {
                         {s.observacoes && <p className="max-w-48 truncate text-xs text-slate-500">{s.observacoes}</p>}
                       </td>
                       <td>
-                        <Link href={`/mesas/${s.mesa.id}`} className="link">
-                          {s.mesa.nome}
-                        </Link>
+                        {s.mesa ? (
+                          <span className="inline-flex flex-wrap items-center gap-1.5">
+                            <Link href={`/mesas/${s.mesa.id}`} className="link">
+                              {s.mesa.nome}
+                            </Link>
+                            <DescricaoSessao sessao={s} semNome />
+                          </span>
+                        ) : (
+                          <DescricaoSessao sessao={s} />
+                        )}
                       </td>
                       <td>{s.mestre.nome}</td>
                       <td className="num">{formatarMoeda(s.valorCentavos)}</td>
@@ -162,7 +171,7 @@ export default async function Page(props: PageProps<"/sessoes">) {
                           <form action={excluirSessao.bind(null, s.id)}>
                             <BotaoConfirmar
                               className="btn-perigo"
-                              confirmacao={`Excluir a sessão de ${s.mesa.nome} em ${formatarData(s.data)}?`}
+                              confirmacao={`Excluir a sessão de ${nomeDaSessao(s)} em ${formatarData(s.data)}?`}
                             >
                               Excluir
                             </BotaoConfirmar>
@@ -231,10 +240,12 @@ export default async function Page(props: PageProps<"/sessoes">) {
         <aside className="h-fit lg:sticky lg:top-8">
           <RegistrarSessaoForm
             hoje={hojeISO()}
+            valorOneshotCentavos={await valorOneshot()}
             mestres={mestres.filter((m) => m.ativo).map(({ id, nome }) => ({ id, nome }))}
             mesas={mesasAtivas.map((m) => ({
               id: m.id,
               nome: m.nome,
+              detalhe: m.tipoMesa.nome,
               mestreId: m.mestreId,
               valorCentavos: valorSessaoDaMesa(m, m.tipoMesa),
             }))}

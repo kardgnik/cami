@@ -177,7 +177,7 @@ export function AssinaturaForm({
                         checked={marcada}
                         disabled={desabilitada}
                         onChange={() => alternar(m.id)}
-                        className="mt-0.5 size-4 accent-indigo-600"
+                        className="mt-0.5 size-4 shrink-0 accent-indigo-600"
                       />
                       <span className="min-w-0 flex-1">
                         <span className="block font-medium">

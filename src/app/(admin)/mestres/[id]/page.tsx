@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { BotaoExcluir } from "@/components/botao-excluir";
 import { Cabecalho, Indicador, SeloAtivo, Vazio } from "@/components/ui";
 import { intervaloDoMes, mesAtual } from "@/lib/datas";
 import { exigirGerente } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { valorSessaoDaMesa } from "@/lib/finance";
 import { formatarMoeda } from "@/lib/format";
-import { atualizarMestre } from "../actions";
+import { atualizarMestre, excluirMestre } from "../actions";
 import { MestreForm } from "../form";
 
 export default async function Page(props: PageProps<"/mestres/[id]">) {
@@ -41,6 +42,17 @@ export default async function Page(props: PageProps<"/mestres/[id]">) {
     }),
     prisma.sessao.count({ where: { mestreId: id, data: { gte: inicio, lt: fim } } }),
   ]);
+  const totalSessoes = await prisma.sessao.count({ where: { mestreId: id } });
+  const avisoExclusao = [
+    `Excluir o mestre ${mestre.nome}?`,
+    totalSessoes > 0
+      ? `Também serão apagadas ${totalSessoes} sessão(ões) dele, inclusive as já pagas${(aReceber._sum.valorCentavos ?? 0) > 0 ? ` e ${formatarMoeda(aReceber._sum.valorCentavos ?? 0)} ainda a receber` : ""}.`
+      : "",
+    mestre.mesas.length > 0 ? `${mestre.mesas.length} mesa(s) ficarão sem mestre (não são apagadas).` : "",
+    "Esta ação não pode ser desfeita. Para só tirar o acesso, prefira desativar o mestre.",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
   return (
     <>
@@ -49,9 +61,12 @@ export default async function Page(props: PageProps<"/mestres/[id]">) {
         descricao={`Usuário: ${mestre.usuario}`}
         voltar={{ href: "/mestres", rotulo: "Mestres" }}
         acoes={
-          <Link href={`/sessoes?mestreId=${mestre.id}`} className="btn-secundario">
-            Ver sessões
-          </Link>
+          <>
+            <Link href={`/sessoes?mestreId=${mestre.id}`} className="btn-secundario h-fit">
+              Ver sessões
+            </Link>
+            <BotaoExcluir acao={excluirMestre.bind(null, mestre.id)} confirmacao={avisoExclusao} />
+          </>
         }
       />
 

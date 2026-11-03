@@ -8,7 +8,23 @@ Sistema para administrar mesas de RPG por assinatura: jogadores, assinaturas, me
 - **Assinatura**: plano + plataforma de origem + método de pagamento. Cada assinatura cobre **até N mesas**, conforme o plano (campo "mesas incluídas").
 - **Mesas** são de um **tipo** (VIP ou Especial). Cada mesa tem um **mestre**, vários jogadores (capacidade padrão de 6) e uma previsão de sessões por mês (padrão 2).
 - **Mestres** recebem por sessão conduzida. O valor por sessão é definido no **tipo de mesa** (padrão R$ 35,00) e pode ser **personalizado em cada mesa**.
-- **Sessões**: o mestre registra no **painel do mestre** e a sessão já entra como "a receber". O valor é gravado no momento do registro, então mudanças de preço posteriores não alteram o histórico. O gerente **marca como paga** em "Sessões e pagamentos", uma por uma ou todas de um mestre no mês.
+- **Sessões**: o mestre registra no **painel do mestre** e a sessão já entra como "a receber". O valor é gravado no momento do registro, então mudanças de preço posteriores não alteram o histórico. O gerente **marca como paga** em "Sessões e pagamentos", uma por uma ou todas de um mestre no mês. Tipos de sessão:
+
+  | Tipo | Mesa | Valor pago ao mestre |
+  |---|---|---|
+  | Sessão normal | obrigatória | valor da mesa |
+  | Reposição | obrigatória; informa também a data da sessão reposta | valor da mesa |
+  | Sessão extra | obrigatória | valor da mesa |
+  | Sessão dupla | obrigatória | **o dobro** do valor da mesa |
+  | Oneshot paga | não tem; informa o **nome da oneshot** | valor de oneshot configurado em "Tipos de mesa" (padrão R$ 35,00) |
+
+- **Excluir**: jogadores, assinaturas, mesas, mestres, planos, plataformas, métodos de pagamento, tipos de mesa e sessões podem ser excluídos.
+  - **Mesa**: apaga também as sessões dela e os vínculos com assinaturas. As assinaturas e os jogadores continuam.
+  - **Mestre**: apaga também as sessões dele. As mesas dele ficam sem mestre.
+  - **Jogador**: apaga também as assinaturas dele.
+  - **Planos, plataformas, métodos e tipos de mesa**: só podem ser excluídos quando nada os usa. Caso contrário, o sistema mostra o motivo.
+  - Em todos os casos a confirmação diz o que vai junto. Para só parar de usar algo sem perder histórico, prefira **desativar**.
+- **Modo escuro**: botão no menu (e na tela de login). Sem escolha salva, segue o tema do sistema operacional.
 - **Plataformas** e **métodos de pagamento** têm taxa percentual e/ou fixa, descontada de cada cobrança.
 - **Visão geral** mostra **entrada e saída**: receita líquida das assinaturas (já sem taxas), custo previsto e real com mestres, valor a pagar aos mestres e o resultado do mês.
 

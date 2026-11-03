@@ -91,3 +91,15 @@ export function custoMensalPrevistoDaMesa(
 ): number {
   return valorSessaoDaMesa(mesa, tipo) * mesa.sessoesPorMes;
 }
+
+export type TipoSessao = "NORMAL" | "REPOSICAO" | "EXTRA" | "DUPLA" | "ONESHOT";
+
+/**
+ * Valor pago ao mestre por uma sessão: normal, reposição e extra pagam o valor da
+ * mesa; dupla paga o dobro; oneshot paga o valor configurado (não tem mesa).
+ */
+export function valorDaSessao(tipo: TipoSessao, valorMesaCentavos: number | null, valorOneshotCentavos: number): number {
+  if (tipo === "ONESHOT") return valorOneshotCentavos;
+  if (valorMesaCentavos === null) throw new Error("Sessão que não é oneshot precisa de mesa.");
+  return tipo === "DUPLA" ? valorMesaCentavos * 2 : valorMesaCentavos;
+}

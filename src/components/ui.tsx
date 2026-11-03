@@ -90,3 +90,32 @@ export function Indicador({
     </div>
   );
 }
+
+/** Nome da sessão (mesa ou oneshot), com o tipo quando não é normal e a data reposta. */
+export function DescricaoSessao({
+  sessao,
+  semNome,
+}: {
+  sessao: {
+    tipo: "NORMAL" | "REPOSICAO" | "EXTRA" | "DUPLA" | "ONESHOT";
+    mesa: { nome: string } | null;
+    nomeOneshot: string | null;
+    dataReferencia: Date | null;
+  };
+  /** Esconde o nome (ex.: na página da própria mesa). */
+  semNome?: boolean;
+}) {
+  const rotulos = { REPOSICAO: "Reposição", EXTRA: "Extra", DUPLA: "Dupla", ONESHOT: "Oneshot" } as const;
+  const nome = sessao.mesa ? sessao.mesa.nome : (sessao.nomeOneshot ?? "Oneshot");
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+      {!semNome && <span>{nome}</span>}
+      {sessao.tipo !== "NORMAL" && <Selo cor={sessao.tipo === "DUPLA" ? "verde" : "cinza"}>{rotulos[sessao.tipo]}</Selo>}
+      {sessao.dataReferencia && (
+        <span className="text-xs text-slate-500">
+          repõe {sessao.dataReferencia.toLocaleDateString("pt-BR", { timeZone: "UTC" })}
+        </span>
+      )}
+    </span>
+  );
+}

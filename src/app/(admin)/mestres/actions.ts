@@ -75,3 +75,17 @@ export async function alternarMestre(id: number) {
   await prisma.mestre.update({ where: { id }, data: { ativo: !atual.ativo } });
   revalidatePath("/", "layout");
 }
+
+/**
+ * Exclui o mestre e as sessões dele (inclusive as pagas). As mesas que ele
+ * conduzia ficam sem mestre (não são apagadas).
+ */
+export async function excluirMestre(id: number): Promise<EstadoForm> {
+  await exigirGerente();
+  await prisma.$transaction([
+    prisma.sessao.deleteMany({ where: { mestreId: id } }),
+    prisma.mestre.delete({ where: { id } }),
+  ]);
+  revalidatePath("/", "layout");
+  redirect("/mestres");
+}

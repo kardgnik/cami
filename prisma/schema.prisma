@@ -17,6 +17,15 @@ enum Periodicidade {
   ANUAL
 }
 
+/// Como a sessão foi realizada. Define o valor pago ao mestre.
+enum TipoSessao {
+  NORMAL     // sessão comum da mesa: 1× o valor da mesa
+  REPOSICAO  // repõe uma sessão que não aconteceu: 1× o valor da mesa
+  EXTRA      // sessão a mais da mesa: 1× o valor da mesa
+  DUPLA      // sessão dupla da mesa: 2× o valor da mesa
+  ONESHOT    // oneshot paga, sem mesa fixa: valor configurado em Configuracao
+}
+
 enum StatusAssinatura {
   ATIVO
   INADIMPLENTE
@@ -190,22 +199,39 @@ model Mesa {
 /// Uma sessão conduzida por um mestre. O valor é gravado no registro para que
 /// mudanças de preço posteriores não alterem o histórico.
 model Sessao {
-  id            Int       @id @default(autoincrement())
-  mesaId        Int
-  mestreId      Int
-  data          DateTime  @db.Date
-  valorCentavos Int
+  id             Int        @id @default(autoincrement())
+  tipo           TipoSessao @default(NORMAL)
+  /// Vazio só em oneshots.
+  mesaId         Int?
+  /// Nome da oneshot (só quando tipo = ONESHOT).
+  nomeOneshot    String?
+  mestreId       Int
+  /// Data em que a sessão aconteceu (é a que conta para o mês do pagamento).
+  data           DateTime   @db.Date
+  /// Reposição: data da sessão original que está sendo reposta.
+  dataReferencia DateTime?  @db.Date
+  valorCentavos  Int
   observacoes   String?
   /// Preenchido quando o gerente marca a sessão como paga.
   pagoEm        DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  mesa   Mesa   @relation(fields: [mesaId], references: [id], onDelete: Restrict)
+  mesa   Mesa?  @relation(fields: [mesaId], references: [id], onDelete: Restrict)
   mestre Mestre @relation(fields: [mestreId], references: [id], onDelete: Restrict)
 
   @@unique([mesaId, data])
   @@index([mestreId, pagoEm])
   @@index([data])
   @@map("sessoes")
+}
+
+/// Configurações gerais (uma única linha, id = 1).
+model Configuracao {
+  id                   Int      @id @default(1)
+  /// Valor pago ao mestre por uma oneshot paga.
+  valorOneshotCentavos Int      @default(3500)
+  updatedAt            DateTime @updatedAt
+
+  @@map("configuracoes")
 }

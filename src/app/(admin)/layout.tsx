@@ -1,4 +1,5 @@
 import { sair } from "@/app/actions/auth";
+import { AlternarTema } from "@/components/alternar-tema";
 import { Suspense } from "react";
 import { ListaLinks, NavLinks } from "./nav-links";
 
@@ -14,11 +15,14 @@ export default function AdminLayout({ children }: LayoutProps<"/">) {
           <Suspense fallback={<ListaLinks />}>
             <NavLinks />
           </Suspense>
-          <form action={sair} className="md:mt-auto">
-            <button type="submit" className="btn-secundario w-full">
-              Sair
-            </button>
-          </form>
+          <div className="flex gap-2 md:mt-auto md:flex-col">
+            <AlternarTema className="w-full" />
+            <form action={sair} className="w-full">
+              <button type="submit" className="btn-secundario w-full">
+                Sair
+              </button>
+            </form>
+          </div>
         </div>
       </aside>
       <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">

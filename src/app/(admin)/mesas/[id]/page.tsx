@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Cabecalho, SeloSessao, SeloStatus, Vazio } from "@/components/ui";
+import { BotaoExcluir } from "@/components/botao-excluir";
+import { Cabecalho, DescricaoSessao, SeloSessao, SeloStatus, Vazio } from "@/components/ui";
 import { exigirGerente } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { formatarData, formatarMoeda, paraInput } from "@/lib/format";
-import { atualizarMesa } from "../actions";
+import { atualizarMesa, excluirMesa } from "../actions";
 import { MesaForm } from "../form";
 import { carregarOpcoesMesa } from "../opcoes";
 
@@ -35,10 +36,23 @@ export default async function Page(props: PageProps<"/mesas/[id]">) {
     a.assinatura.jogador.nome.localeCompare(b.assinatura.jogador.nome, "pt-BR"),
   );
   const ocupados = vinculos.filter((v) => v.assinatura.status !== "CANCELADO").length;
+  const totalSessoes = await prisma.sessao.count({ where: { mesaId: mesa.id } });
+  const avisoExclusao = [
+    `Excluir a mesa ${mesa.nome}?`,
+    totalSessoes > 0 ? `Também serão apagadas ${totalSessoes} sessão(ões) registrada(s), inclusive as já pagas.` : "",
+    vinculos.length > 0 ? `${vinculos.length} assinatura(s) deixarão de incluir esta mesa (jogadores e assinaturas continuam).` : "",
+    "Esta ação não pode ser desfeita. Para só parar de usar a mesa, prefira desativá-la.",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
   return (
     <>
-      <Cabecalho titulo={`Editar mesa: ${mesa.nome}`} voltar={{ href: "/mesas", rotulo: "Mesas" }} />
+      <Cabecalho
+        titulo={`Editar mesa: ${mesa.nome}`}
+        voltar={{ href: "/mesas", rotulo: "Mesas" }}
+        acoes={<BotaoExcluir acao={excluirMesa.bind(null, mesa.id)} confirmacao={avisoExclusao} />}
+      />
       <MesaForm
         acao={atualizarMesa.bind(null, mesa.id)}
         {...opcoes}
@@ -110,7 +124,9 @@ export default async function Page(props: PageProps<"/mesas/[id]">) {
               <tbody>
                 {mesa.sessoes.map((s) => (
                   <tr key={s.id}>
-                    <td>{formatarData(s.data)}</td>
+                    <td>
+                      {formatarData(s.data)} <DescricaoSessao sessao={{ ...s, mesa: null }} semNome />
+                    </td>
                     <td>{s.mestre.nome}</td>
                     <td className="num">{formatarMoeda(s.valorCentavos)}</td>
                     <td>
