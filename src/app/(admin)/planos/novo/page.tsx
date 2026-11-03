@@ -8,7 +8,7 @@ export default async function Page() {
   return (
     <>
       <Cabecalho titulo="Novo plano" voltar={{ href: "/planos", rotulo: "Planos" }} />
-      <PlanoForm acao={criarPlano} inicial={{ nome: "", descricao: "", valorCentavos: "", periodicidade: "MENSAL" }} />
+      <PlanoForm acao={criarPlano} inicial={{ nome: "", descricao: "", valorCentavos: "", periodicidade: "MENSAL", limiteMesas: "1" }} />
     </>
   );
 }

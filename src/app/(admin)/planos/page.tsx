@@ -13,7 +13,7 @@ export default async function Page() {
   await exigirGerente();
   const [planos, ativosPorPlano] = await Promise.all([
     prisma.plano.findMany({ orderBy: [{ ativo: "desc" }, { valorCentavos: "asc" }] }),
-    prisma.assinante.groupBy({ by: ["planoId"], where: { status: "ATIVO" }, _count: true }),
+    prisma.assinatura.groupBy({ by: ["planoId"], where: { status: "ATIVO" }, _count: true }),
   ]);
   const ativos = new Map(ativosPorPlano.map((g) => [g.planoId, g._count]));
 
@@ -44,7 +44,8 @@ export default async function Page() {
                 <th>Plano</th>
                 <th className="num">Valor</th>
                 <th>Periodicidade</th>
-                <th className="num">Assinantes ativos</th>
+                <th className="num">Mesas</th>
+                <th className="num">Assinaturas ativas</th>
                 <th>Status</th>
                 <th className="text-right">Ações</th>
               </tr>
@@ -61,6 +62,7 @@ export default async function Page() {
                     <span className="text-xs text-slate-400">{sufixoPeriodicidade(p.periodicidade)}</span>
                   </td>
                   <td>{rotuloPeriodicidade(p.periodicidade)}</td>
+                  <td className="num">{p.limiteMesas}</td>
                   <td className="num">{ativos.get(p.id) ?? 0}</td>
                   <td>
                     <SeloAtivo ativo={p.ativo} />
@@ -84,7 +86,7 @@ export default async function Page() {
         )}
       </div>
       <p className="mt-3 text-xs text-slate-500">
-        Alterar o valor de um plano atualiza o valor de todos os assinantes vinculados a ele.
+        Alterar o valor de um plano atualiza o valor de todas as assinaturas vinculadas a ele.
       </p>
     </>
   );

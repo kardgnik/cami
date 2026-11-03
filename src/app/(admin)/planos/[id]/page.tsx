@@ -22,6 +22,7 @@ export default async function Page(props: PageProps<"/planos/[id]">) {
           descricao: plano.descricao ?? "",
           valorCentavos: paraInput(plano.valorCentavos),
           periodicidade: plano.periodicidade,
+          limiteMesas: String(plano.limiteMesas),
         }}
       />
     </>

@@ -6,7 +6,7 @@ import { AreaTexto, Campo, Erro, Selecao } from "@/components/form";
 import { PERIODICIDADES } from "@/lib/labels";
 import type { EstadoForm } from "@/lib/validations";
 
-type Valores = { nome: string; descricao: string; valorCentavos: string; periodicidade: string };
+type Valores = { nome: string; descricao: string; valorCentavos: string; periodicidade: string; limiteMesas: string };
 
 export function PlanoForm({
   acao,
@@ -44,6 +44,18 @@ export function PlanoForm({
           ))}
         </Selecao>
       </div>
+      <Campo
+        rotulo="Mesas incluídas"
+        name="limiteMesas"
+        type="number"
+        min={1}
+        max={50}
+        required
+        defaultValue={v.limiteMesas}
+        erros={estado.erros?.limiteMesas}
+        ajuda="Quantas mesas uma assinatura deste plano pode incluir."
+        className="sm:max-w-48"
+      />
       <AreaTexto rotulo="Descrição (opcional)" name="descricao" defaultValue={v.descricao} erros={estado.erros?.descricao} />
       <Erro mensagem={estado.mensagem} />
       <div className="flex gap-2">
