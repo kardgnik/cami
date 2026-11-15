@@ -13,7 +13,21 @@ const dominiosPublicos = (process.env.DOMINIO_PUBLICO ?? "")
 
 const nextConfig: NextConfig = {
   experimental: dominiosPublicos.length ? { serverActions: { allowedOrigins: dominiosPublicos } } : undefined,
-  /* config options here */
+  poweredByHeader: false,
+  // O painel não deve ser embutido em outros sites (clickjacking) nem aparecer em buscadores.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "same-origin" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ],
+      },
+    ];
+  },
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

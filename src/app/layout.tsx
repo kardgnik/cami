@@ -8,7 +8,8 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 
 export const metadata: Metadata = {
   title: "Gestão de Assinaturas",
-  description: "Painel do gerente para planos, assinantes, plataformas e métodos de pagamento.",
+  description: "Gestão de mesas, jogadores, mestres e pagamentos.",
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -1,6 +1,6 @@
 import "server-only";
 import { SignJWT, jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 const COOKIE = "sessao";
 const DURACAO_MS = 7 * 24 * 60 * 60 * 1000;
@@ -41,7 +41,7 @@ export async function criarSessao(perfil: Perfil, id: number) {
   const token = await assinar({ perfil, id, expiraEm: expiraEm.toISOString() });
   (await cookies()).set(COOKIE, token, {
     httpOnly: true,
-    secure: cookieSeguro(),
+    secure: await cookieSeguro(),
     sameSite: "lax",
     expires: expiraEm,
     path: "/",
@@ -49,10 +49,15 @@ export async function criarSessao(perfil: Perfil, id: number) {
 }
 
 /**
- * Cookie só trafega em HTTPS? Padrão: sim em produção. Em instalação local acessada
- * pela rede (http://192.168...), defina COOKIE_SECURE="false", senão o login falha.
+ * Cookie só trafega em HTTPS?
+ * - Acesso por HTTPS (ex.: pelo túnel/domínio): sempre, é mais seguro e não atrapalha.
+ * - Acesso por http:// (rede local): só se COOKIE_SECURE="true"; em produção sem a
+ *   variável o padrão também é exigir HTTPS. A instalação local usa COOKIE_SECURE="false"
+ *   para o login funcionar pelo endereço http://192.168... dos outros aparelhos.
  */
-function cookieSeguro() {
+async function cookieSeguro() {
+  const proto = (await headers()).get("x-forwarded-proto")?.split(",")[0]?.trim();
+  if (proto === "https") return true;
   const v = process.env.COOKIE_SECURE?.trim().toLowerCase();
   if (v === "false" || v === "0") return false;
   if (v === "true" || v === "1") return true;
