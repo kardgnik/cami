@@ -23,6 +23,8 @@ export default async function Page() {
           tipoMesaId: opcoes.tipos.length === 1 ? String(opcoes.tipos[0].id) : "",
           mestreId: "",
           valorSessaoCentavos: "",
+          valorAlunoCentavos: "",
+          diaSemana: "",
           sessoesPorMes: "2",
           capacidade: "6",
         }}

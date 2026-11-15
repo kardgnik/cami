@@ -19,11 +19,28 @@ enum Periodicidade {
 
 /// Como a sessão foi realizada. Define o valor pago ao mestre.
 enum TipoSessao {
-  NORMAL     // sessão comum da mesa: 1× o valor da mesa
-  REPOSICAO  // repõe uma sessão que não aconteceu: 1× o valor da mesa
-  EXTRA      // sessão a mais da mesa: 1× o valor da mesa
-  DUPLA      // sessão dupla da mesa: 2× o valor da mesa
-  ONESHOT    // oneshot paga, sem mesa fixa: valor configurado em Configuracao
+  NORMAL      // sessão comum da mesa: 1× o valor da mesa
+  REPOSICAO   // repõe uma sessão que não aconteceu: 1× o valor da mesa
+  EXTRA       // sessão a mais da mesa: 1× o valor da mesa
+  DUPLA       // sessão dupla da mesa: 2× o valor da mesa
+  ONESHOT     // oneshot paga, sem mesa fixa: valor configurado em Configuracao
+  MENSALIDADE // não é uma sessão: lançamento mensal de mesa paga por aluno (alunos × valor por aluno)
+}
+
+/// Como o mestre é pago nas mesas de um tipo.
+enum PagamentoMestre {
+  POR_SESSAO // valor por sessão conduzida
+  POR_ALUNO  // valor por aluno, por mês (lançado como MENSALIDADE)
+}
+
+enum DiaSemana {
+  DOMINGO
+  SEGUNDA
+  TERCA
+  QUARTA
+  QUINTA
+  SEXTA
+  SABADO
 }
 
 enum StatusAssinatura {
@@ -76,6 +93,8 @@ model Plano {
   periodicidade Periodicidade @default(MENSAL)
   /// Quantas mesas uma assinatura deste plano pode incluir.
   limiteMesas   Int           @default(1)
+  /// Grupo fechado: a mesa vinculada fica sem vagas para jogadores de outros planos.
+  grupoFechado  Boolean       @default(false)
   ativo         Boolean       @default(true)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -144,10 +163,14 @@ model AssinaturaMesa {
 /// VIP, Especial... Define o valor padrão pago ao mestre por sessão.
 model TipoMesa {
   id                  Int      @id @default(autoincrement())
-  nome                String   @unique
+  nome                String          @unique
+  /// Valor por sessão (tipos pagos por sessão).
   valorSessaoCentavos Int
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  pagamentoMestre     PagamentoMestre @default(POR_SESSAO)
+  /// Valor por aluno, por mês (tipos pagos por aluno).
+  valorAlunoCentavos  Int             @default(0)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
   mesas               Mesa[]
 
   @@map("tipos_mesa")
@@ -179,6 +202,10 @@ model Mesa {
   mestreId            Int?
   /// Se preenchido, substitui o valor por sessão do tipo da mesa.
   valorSessaoCentavos Int?
+  /// Se preenchido, substitui o valor por aluno/mês do tipo da mesa (tipos pagos por aluno).
+  valorAlunoCentavos  Int?
+  /// Dia da semana em que a mesa joga.
+  diaSemana           DiaSemana?
   /// Sessões previstas por mês (usado na previsão de custo com mestres).
   sessoesPorMes       Int              @default(2)
   capacidade          Int              @default(6)
@@ -196,8 +223,9 @@ model Mesa {
   @@map("mesas")
 }
 
-/// Uma sessão conduzida por um mestre. O valor é gravado no registro para que
-/// mudanças de preço posteriores não alterem o histórico.
+/// Um lançamento a pagar ao mestre: uma sessão conduzida ou, nas mesas pagas por
+/// aluno, a mensalidade do mês. O valor é gravado no registro para que mudanças
+/// de preço posteriores não alterem o histórico.
 model Sessao {
   id             Int        @id @default(autoincrement())
   tipo           TipoSessao @default(NORMAL)
@@ -211,6 +239,8 @@ model Sessao {
   /// Reposição: data da sessão original que está sendo reposta.
   dataReferencia DateTime?  @db.Date
   valorCentavos  Int
+  /// Mensalidade: quantos alunos entraram no cálculo.
+  alunos         Int?
   observacoes   String?
   /// Preenchido quando o gerente marca a sessão como paga.
   pagoEm        DateTime?
@@ -220,7 +250,9 @@ model Sessao {
   mesa   Mesa?  @relation(fields: [mesaId], references: [id], onDelete: Restrict)
   mestre Mestre @relation(fields: [mestreId], references: [id], onDelete: Restrict)
 
-  @@unique([mesaId, data])
+  // o tipo entra na chave para a mensalidade (datada no dia 1º) conviver com uma sessão nesse dia;
+  // sessões de tipos diferentes na mesma mesa e data são barradas em lib/sessoes.ts
+  @@unique([mesaId, data, tipo])
   @@index([mestreId, pagoEm])
   @@index([data])
   @@map("sessoes")

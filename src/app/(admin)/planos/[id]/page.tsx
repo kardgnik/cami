@@ -33,6 +33,7 @@ export default async function Page(props: PageProps<"/planos/[id]">) {
           valorCentavos: paraInput(plano.valorCentavos),
           periodicidade: plano.periodicidade,
           limiteMesas: String(plano.limiteMesas),
+          grupoFechado: plano.grupoFechado ? "on" : undefined,
         }}
       />
     </>

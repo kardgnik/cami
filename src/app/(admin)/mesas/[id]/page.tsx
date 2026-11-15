@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BotaoExcluir } from "@/components/botao-excluir";
-import { Cabecalho, DescricaoSessao, SeloSessao, SeloStatus, Vazio } from "@/components/ui";
+import { Cabecalho, DescricaoSessao, Selo, SeloSessao, SeloStatus, Vazio } from "@/components/ui";
 import { exigirGerente } from "@/lib/dal";
 import { prisma } from "@/lib/db";
-import { formatarData, formatarMoeda, paraInput } from "@/lib/format";
+import { formatarMoeda, paraInput } from "@/lib/format";
+import { dataDoLancamento } from "@/lib/labels";
 import { atualizarMesa, excluirMesa } from "../actions";
 import { MesaForm } from "../form";
 import { carregarOpcoesMesa } from "../opcoes";
@@ -19,7 +20,10 @@ export default async function Page(props: PageProps<"/mesas/[id]">) {
       assinaturas: {
         include: {
           assinatura: {
-            include: { jogador: { select: { id: true, nome: true } }, plano: { select: { nome: true } } },
+            include: {
+              jogador: { select: { id: true, nome: true } },
+              plano: { select: { nome: true, grupoFechado: true } },
+            },
           },
         },
       },
@@ -35,11 +39,13 @@ export default async function Page(props: PageProps<"/mesas/[id]">) {
   const vinculos = [...mesa.assinaturas].sort((a, b) =>
     a.assinatura.jogador.nome.localeCompare(b.assinatura.jogador.nome, "pt-BR"),
   );
-  const ocupados = vinculos.filter((v) => v.assinatura.status !== "CANCELADO").length;
+  const ocupantes = vinculos.filter((v) => v.assinatura.status !== "CANCELADO");
+  const ocupados = ocupantes.length;
+  const fechada = ocupantes.some((v) => v.assinatura.plano.grupoFechado);
   const totalSessoes = await prisma.sessao.count({ where: { mesaId: mesa.id } });
   const avisoExclusao = [
     `Excluir a mesa ${mesa.nome}?`,
-    totalSessoes > 0 ? `Também serão apagadas ${totalSessoes} sessão(ões) registrada(s), inclusive as já pagas.` : "",
+    totalSessoes > 0 ? `Também serão apagados ${totalSessoes} lançamento(s) da mesa (sessões e mensalidades), inclusive os já pagos.` : "",
     vinculos.length > 0 ? `${vinculos.length} assinatura(s) deixarão de incluir esta mesa (jogadores e assinaturas continuam).` : "",
     "Esta ação não pode ser desfeita. Para só parar de usar a mesa, prefira desativá-la.",
   ]
@@ -62,6 +68,8 @@ export default async function Page(props: PageProps<"/mesas/[id]">) {
           tipoMesaId: String(mesa.tipoMesaId),
           mestreId: mesa.mestreId ? String(mesa.mestreId) : "",
           valorSessaoCentavos: mesa.valorSessaoCentavos === null ? "" : paraInput(mesa.valorSessaoCentavos),
+          valorAlunoCentavos: mesa.valorAlunoCentavos === null ? "" : paraInput(mesa.valorAlunoCentavos),
+          diaSemana: mesa.diaSemana ?? "",
           sessoesPorMes: String(mesa.sessoesPorMes),
           capacidade: String(mesa.capacidade),
         }}
@@ -70,7 +78,7 @@ export default async function Page(props: PageProps<"/mesas/[id]">) {
       <div className="mt-8 grid gap-6 xl:grid-cols-2">
         <section className="cartao overflow-x-auto">
           <h2 className="px-4 pt-4 pb-3 text-sm font-semibold text-slate-900">
-            Jogadores ({ocupados}/{mesa.capacidade})
+            Jogadores ({ocupados}/{mesa.capacidade}) {fechada && <Selo cor="cinza">Grupo fechado · sem vagas</Selo>}
           </h2>
           {vinculos.length === 0 ? (
             <Vazio>Nenhum jogador nesta mesa. Vincule pela assinatura do jogador.</Vazio>
@@ -91,7 +99,10 @@ export default async function Page(props: PageProps<"/mesas/[id]">) {
                         {v.assinatura.jogador.nome}
                       </Link>
                     </td>
-                    <td>{v.assinatura.plano.nome}</td>
+                    <td>
+                      {v.assinatura.plano.nome}
+                      {v.assinatura.plano.grupoFechado && <span className="text-xs text-slate-500"> · grupo fechado</span>}
+                    </td>
                     <td>
                       <SeloStatus status={v.assinatura.status} />
                     </td>
@@ -104,7 +115,7 @@ export default async function Page(props: PageProps<"/mesas/[id]">) {
 
         <section className="cartao overflow-x-auto">
           <div className="flex items-center justify-between px-4 pt-4 pb-3">
-            <h2 className="text-sm font-semibold text-slate-900">Últimas sessões</h2>
+            <h2 className="text-sm font-semibold text-slate-900">Últimos lançamentos</h2>
             <Link href="/sessoes" className="text-xs link">
               Ver todas
             </Link>
@@ -125,12 +136,12 @@ export default async function Page(props: PageProps<"/mesas/[id]">) {
                 {mesa.sessoes.map((s) => (
                   <tr key={s.id}>
                     <td>
-                      {formatarData(s.data)} <DescricaoSessao sessao={{ ...s, mesa: null }} semNome />
+                      {dataDoLancamento(s)} <DescricaoSessao sessao={{ ...s, mesa: null }} semNome />
                     </td>
                     <td>{s.mestre.nome}</td>
                     <td className="num">{formatarMoeda(s.valorCentavos)}</td>
                     <td>
-                      <SeloSessao pagoEm={s.pagoEm} />
+                      <SeloSessao pagoEm={s.pagoEm} valorCentavos={s.valorCentavos} />
                     </td>
                   </tr>
                 ))}

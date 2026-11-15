@@ -135,3 +135,38 @@ describe("tipos de sessão", () => {
     expect(normal.ok && normal.dados.dataReferencia).toBeNull();
   });
 });
+
+describe("novos campos", () => {
+  it("plano: grupo fechado vem da caixa de seleção", () => {
+    const base = { nome: "G", valorCentavos: "500", periodicidade: "MENSAL", limiteMesas: "1" };
+    const sem = validar(planoSchema, fd(base));
+    expect(sem.ok && sem.dados.grupoFechado).toBe(false);
+    const com = validar(planoSchema, fd({ ...base, grupoFechado: "on" }));
+    expect(com.ok && com.dados.grupoFechado).toBe(true);
+  });
+
+  it("tipo de mesa pago por aluno exige o valor por aluno", async () => {
+    const { tipoMesaSchema } = await import("./validations");
+    const base = { nome: "English RPG", valorSessaoCentavos: "35,00" };
+    const semValor = validar(tipoMesaSchema, fd({ ...base, pagamentoMestre: "POR_ALUNO", valorAlunoCentavos: "" }));
+    expect(!semValor.ok && semValor.estado.erros?.valorAlunoCentavos).toBeTruthy();
+    const ok = validar(tipoMesaSchema, fd({ ...base, pagamentoMestre: "POR_ALUNO", valorAlunoCentavos: "200" }));
+    expect(ok.ok && ok.dados).toMatchObject({ pagamentoMestre: "POR_ALUNO", valorAlunoCentavos: 20_000, valorSessaoCentavos: 3_500 });
+    const porSessao = validar(tipoMesaSchema, fd({ ...base, pagamentoMestre: "POR_SESSAO", valorAlunoCentavos: "" }));
+    expect(porSessao.ok && porSessao.dados.valorAlunoCentavos).toBe(0);
+  });
+
+  it("mesa: dia da semana e valor por aluno são opcionais", () => {
+    const base = { nome: "M", tipoMesaId: "1", mestreId: "", valorSessaoCentavos: "", sessoesPorMes: "2", capacidade: "6" };
+    const vazio = validar(mesaSchema, fd({ ...base, diaSemana: "", valorAlunoCentavos: "" }));
+    expect(vazio.ok && vazio.dados).toMatchObject({ diaSemana: null, valorAlunoCentavos: null });
+    const cheio = validar(mesaSchema, fd({ ...base, diaSemana: "QUINTA", valorAlunoCentavos: "250,00" }));
+    expect(cheio.ok && cheio.dados).toMatchObject({ diaSemana: "QUINTA", valorAlunoCentavos: 25_000 });
+    expect(validar(mesaSchema, fd({ ...base, diaSemana: "FERIADO" })).ok).toBe(false);
+  });
+
+  it("mensalidade não pode ser registrada como sessão", async () => {
+    const { sessaoSchema } = await import("./validations");
+    expect(validar(sessaoSchema, fd({ tipo: "MENSALIDADE", mesaId: "1", data: "2026-11-01" })).ok).toBe(false);
+  });
+});

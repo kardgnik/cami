@@ -5,7 +5,8 @@ import { Cabecalho, Indicador, SeloAtivo, Vazio } from "@/components/ui";
 import { intervaloDoMes, mesAtual } from "@/lib/datas";
 import { exigirGerente } from "@/lib/dal";
 import { prisma } from "@/lib/db";
-import { valorSessaoDaMesa } from "@/lib/finance";
+import { valorAlunoDaMesa, valorSessaoDaMesa } from "@/lib/finance";
+import { rotuloDia } from "@/lib/labels";
 import { formatarMoeda } from "@/lib/format";
 import { atualizarMestre, excluirMestre } from "../actions";
 import { MestreForm } from "../form";
@@ -40,13 +41,13 @@ export default async function Page(props: PageProps<"/mestres/[id]">) {
       where: { mestreId: id, pagoEm: { gte: pagoDesde, lt: pagoAte } },
       _sum: { valorCentavos: true },
     }),
-    prisma.sessao.count({ where: { mestreId: id, data: { gte: inicio, lt: fim } } }),
+    prisma.sessao.count({ where: { mestreId: id, data: { gte: inicio, lt: fim }, tipo: { not: "MENSALIDADE" } } }),
   ]);
   const totalSessoes = await prisma.sessao.count({ where: { mestreId: id } });
   const avisoExclusao = [
     `Excluir o mestre ${mestre.nome}?`,
     totalSessoes > 0
-      ? `Também serão apagadas ${totalSessoes} sessão(ões) dele, inclusive as já pagas${(aReceber._sum.valorCentavos ?? 0) > 0 ? ` e ${formatarMoeda(aReceber._sum.valorCentavos ?? 0)} ainda a receber` : ""}.`
+      ? `Também serão apagados ${totalSessoes} lançamento(s) dele (sessões e mensalidades), inclusive as já pagas${(aReceber._sum.valorCentavos ?? 0) > 0 ? ` e ${formatarMoeda(aReceber._sum.valorCentavos ?? 0)} ainda a receber` : ""}.`
       : "",
     mestre.mesas.length > 0 ? `${mestre.mesas.length} mesa(s) ficarão sem mestre (não são apagadas).` : "",
     "Esta ação não pode ser desfeita. Para só tirar o acesso, prefira desativar o mestre.",
@@ -106,8 +107,8 @@ export default async function Page(props: PageProps<"/mestres/[id]">) {
               <tr>
                 <th>Mesa</th>
                 <th>Tipo</th>
-                <th className="num">Valor/sessão</th>
-                <th className="num">Sessões/mês</th>
+                <th>Dia</th>
+                <th className="num">Pagamento</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -120,8 +121,12 @@ export default async function Page(props: PageProps<"/mestres/[id]">) {
                     </Link>
                   </td>
                   <td>{m.tipoMesa.nome}</td>
-                  <td className="num">{formatarMoeda(valorSessaoDaMesa(m, m.tipoMesa))}</td>
-                  <td className="num">{m.sessoesPorMes}</td>
+                  <td>{rotuloDia(m.diaSemana, true) ?? "—"}</td>
+                  <td className="num">
+                    {m.tipoMesa.pagamentoMestre === "POR_ALUNO"
+                      ? `${formatarMoeda(valorAlunoDaMesa(m, m.tipoMesa))} por aluno/mês`
+                      : `${formatarMoeda(valorSessaoDaMesa(m, m.tipoMesa))} por sessão × ${m.sessoesPorMes}/mês`}
+                  </td>
                   <td>
                     <SeloAtivo ativo={m.ativo} />
                   </td>

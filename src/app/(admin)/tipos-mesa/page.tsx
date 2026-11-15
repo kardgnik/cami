@@ -19,7 +19,7 @@ export default async function Page() {
     <>
       <Cabecalho
         titulo="Tipos de mesa"
-        descricao="Valor padrão pago ao mestre por sessão em cada tipo de mesa (sessão dupla paga o dobro) e por oneshot."
+        descricao="Como o mestre é pago em cada tipo de mesa: por sessão (sessão dupla paga o dobro) ou por aluno, por mês. Também o valor da oneshot."
         acoes={
           <Link href="/tipos-mesa/novo" className="btn-primario">
             + Novo tipo
@@ -40,7 +40,7 @@ export default async function Page() {
             <thead>
               <tr>
                 <th>Tipo</th>
-                <th className="num">Valor por sessão</th>
+                <th className="num">Pagamento do mestre</th>
                 <th className="num">Mesas</th>
                 <th className="text-right">Ações</th>
               </tr>
@@ -49,7 +49,17 @@ export default async function Page() {
               {tipos.map((t) => (
                 <tr key={t.id}>
                   <td className="font-medium">{t.nome}</td>
-                  <td className="num">{formatarMoeda(t.valorSessaoCentavos)}</td>
+                  <td className="num">
+                    {t.pagamentoMestre === "POR_ALUNO" ? (
+                      <>
+                        {formatarMoeda(t.valorAlunoCentavos)} <span className="text-xs text-slate-500">por aluno/mês</span>
+                      </>
+                    ) : (
+                      <>
+                        {formatarMoeda(t.valorSessaoCentavos)} <span className="text-xs text-slate-500">por sessão</span>
+                      </>
+                    )}
+                  </td>
                   <td className="num">
                     <Link href={`/mesas?tipoMesaId=${t.id}`} className="link">
                       {t._count.mesas}
@@ -69,8 +79,9 @@ export default async function Page() {
         )}
       </div>
       <p className="mt-3 text-xs text-slate-500">
-        Mesas sem valor próprio usam o valor do seu tipo. Mudar o valor afeta só as sessões registradas daqui em diante:
-        o valor fica gravado em cada sessão no momento do registro.
+        Mesas sem valor próprio usam o valor do seu tipo. Mudar o valor afeta só as sessões e mensalidades lançadas daqui
+        em diante: o valor fica gravado em cada lançamento. Nos tipos pagos por aluno, a mensalidade do mês é lançada em
+        Sessões e pagamentos.
       </p>
       <OneshotForm valorInicial={paraInput(await valorOneshot())} />
     </>

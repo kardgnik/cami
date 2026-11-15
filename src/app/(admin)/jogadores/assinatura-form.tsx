@@ -5,7 +5,7 @@ import { useActionState, useState } from "react";
 import { AreaTexto, Campo, Erro, ErrosCampo, Selecao } from "@/components/form";
 import { calcularLiquido, type Periodicidade, type Taxa } from "@/lib/finance";
 import { descreverTaxa, formatarMoeda } from "@/lib/format";
-import { rotuloPeriodicidade, STATUS, sufixoPeriodicidade } from "@/lib/labels";
+import { rotuloDia, rotuloPeriodicidade, STATUS, sufixoPeriodicidade } from "@/lib/labels";
 import type { EstadoForm } from "@/lib/validations";
 import type { OpcaoMesa } from "./_opcoes";
 
@@ -15,6 +15,7 @@ export type OpcaoPlano = {
   valorCentavos: number;
   periodicidade: Periodicidade;
   limiteMesas: number;
+  grupoFechado: boolean;
   ativo: boolean;
 };
 export type OpcaoTaxa = Taxa & { id: number; nome: string; ativo: boolean };
@@ -100,6 +101,7 @@ export function AssinaturaForm({
               <option key={p.id} value={p.id}>
                 {rotulo(p.nome, p.ativo)} · {formatarMoeda(p.valorCentavos)}
                 {sufixoPeriodicidade(p.periodicidade)} · {p.limiteMesas} mesa{p.limiteMesas === 1 ? "" : "s"}
+                {p.grupoFechado ? " · grupo fechado" : ""}
               </option>
             ))}
           </Selecao>
@@ -144,6 +146,11 @@ export function AssinaturaForm({
               {acimaDoLimite && ` — desmarque ${marcadas.size - limite!}`}
             </p>
           </div>
+          {plano?.grupoFechado && (
+            <p className="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+              Plano de grupo fechado: as mesas escolhidas ficam sem vagas para jogadores de outros planos.
+            </p>
+          )}
           {mesas.length === 0 ? (
             <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-500">
               Nenhuma mesa ativa.{" "}
@@ -157,7 +164,9 @@ export function AssinaturaForm({
               {mesas.map((m) => {
                 const marcada = marcadas.has(m.id);
                 const cheia = m.ocupacaoOutras >= m.capacidade && !m.vinculada;
-                const desabilitada = !marcada && (cheia || noLimite);
+                // mesa de grupo fechado só aceita quem também tem plano de grupo fechado
+                const fechada = m.fechadaPorOutra && !plano?.grupoFechado && !m.vinculada;
+                const desabilitada = !marcada && (cheia || fechada || noLimite);
                 const ocupacao = m.ocupacaoOutras + (marcada && ocupa ? 1 : 0);
                 return (
                   <li key={m.id}>
@@ -182,14 +191,18 @@ export function AssinaturaForm({
                       <span className="min-w-0 flex-1">
                         <span className="block font-medium">
                           {rotulo(m.nome, m.ativo)}{" "}
-                          <span className="text-xs font-normal text-slate-500">· {m.tipo}</span>
+                          <span className="text-xs font-normal text-slate-500">
+                            · {m.tipo}
+                            {m.diaSemana ? ` · ${rotuloDia(m.diaSemana, true)}` : ""}
+                          </span>
                         </span>
                         <span className="block text-xs text-slate-500">
                           {m.mestre ? `Mestre: ${m.mestre}` : "Sem mestre"} ·{" "}
                           <span className={ocupacao >= m.capacidade ? "font-medium text-amber-700" : ""}>
-                            {ocupacao}/{m.capacidade} vagas
+                            {ocupacao}/{m.capacidade} jogadores
                           </span>
                           {cheia && " · cheia"}
+                          {m.fechadaPorOutra && " · grupo fechado"}
                         </span>
                       </span>
                     </label>

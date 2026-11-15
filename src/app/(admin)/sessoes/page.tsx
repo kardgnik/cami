@@ -2,15 +2,16 @@ import Link from "next/link";
 import { BotaoConfirmar, BotaoEnviar } from "@/components/botao-confirmar";
 import { SeletorMes } from "@/components/seletor-mes";
 import { Cabecalho, DescricaoSessao, Indicador, SeloSessao, Vazio } from "@/components/ui";
-import { nomeDaSessao } from "@/lib/labels";
+import { dataDoLancamento, nomeDaSessao } from "@/lib/labels";
 import type { Prisma } from "@/generated/prisma/client";
 import { hojeISO, intervaloDoMes, lerMes, mesAtual, rotuloMes } from "@/lib/datas";
 import { exigirGerente } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { valorSessaoDaMesa } from "@/lib/finance";
 import { formatarData, formatarMoeda } from "@/lib/format";
-import { desfazerPagamento, excluirSessao, marcarPaga, marcarTodasPagas } from "./actions";
-import { valorOneshot } from "@/lib/sessoes";
+import { mensalidadesDoMes, valorOneshot } from "@/lib/sessoes";
+import { desfazerPagamento, excluirSessao, lancarMensalidadesDoMes, marcarPaga, marcarTodasPagas } from "./actions";
+import { LancarMensalidades } from "./lancar-mensalidades";
 import { RegistrarSessaoForm } from "./registrar-form";
 
 export const metadata = { title: "Sessões e pagamentos · Gestão de Mesas" };
@@ -30,7 +31,7 @@ export default async function Page(props: PageProps<"/sessoes">) {
 
   // indicadores e resumo usam mês + mestre; a tabela também aplica o status
   const doMes: Prisma.SessaoWhereInput = { data: { gte: inicio, lt: fim }, mestreId };
-  const [sessoesDoMes, mestres, mesasAtivas] = await Promise.all([
+  const [sessoesDoMes, mestres, mesasAtivas, mensalidades] = await Promise.all([
     prisma.sessao.findMany({
       where: doMes,
       include: {
@@ -45,14 +46,19 @@ export default async function Page(props: PageProps<"/sessoes">) {
       orderBy: { nome: "asc" },
       include: { tipoMesa: true },
     }),
+    mensalidadesDoMes(mes, mestreId),
   ]);
 
-  const sessoes = sessoesDoMes.filter((s) =>
-    status === "a-receber" ? !s.pagoEm : status === "pago" ? !!s.pagoEm : true,
-  );
+  // "a receber" = ainda não pago e com valor (sessões de mesas pagas por aluno não têm valor)
+  const pendente = (s: { pagoEm: Date | null; valorCentavos: number }) => !s.pagoEm && s.valorCentavos > 0;
+  const sessoes = sessoesDoMes.filter((s) => (status === "a-receber" ? pendente(s) : status === "pago" ? !!s.pagoEm : true));
   const soma = (lista: typeof sessoesDoMes) => lista.reduce((t, s) => t + s.valorCentavos, 0);
   const total = soma(sessoesDoMes);
-  const aReceber = soma(sessoesDoMes.filter((s) => !s.pagoEm));
+  const aReceber = soma(sessoesDoMes.filter(pendente));
+  const qtdSessoes = sessoesDoMes.filter((s) => s.tipo !== "MENSALIDADE").length;
+  const qtdMensalidades = sessoesDoMes.length - qtdSessoes;
+  const mensalidadesPendentes = mensalidades.filter((m) => !m.lancada && m.alunos > 0);
+  const mesFuturo = mes > mesAtual();
 
   const porMestre = new Map<
     number,
@@ -60,9 +66,9 @@ export default async function Page(props: PageProps<"/sessoes">) {
   >();
   for (const s of sessoesDoMes) {
     const g = porMestre.get(s.mestre.id) ?? { ...s.mestre, sessoes: 0, total: 0, aReceber: 0 };
-    g.sessoes += 1;
+    if (s.tipo !== "MENSALIDADE") g.sessoes += 1;
     g.total += s.valorCentavos;
-    if (!s.pagoEm) g.aReceber += s.valorCentavos;
+    if (pendente(s)) g.aReceber += s.valorCentavos;
     porMestre.set(s.mestre.id, g);
   }
   const resumo = [...porMestre.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
@@ -73,13 +79,14 @@ export default async function Page(props: PageProps<"/sessoes">) {
     <>
       <Cabecalho
         titulo="Sessões e pagamentos"
-        descricao="Sessões registradas pelos mestres e o que falta pagar a cada um."
+        descricao="Sessões registradas pelos mestres, mensalidades das mesas pagas por aluno e o que falta pagar a cada um."
         acoes={<SeletorMes caminho="/sessoes" mes={mes} params={params} />}
       />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <Indicador rotulo={`Total em ${rotuloMes(mes)}`} valor={formatarMoeda(total)}>
-          {sessoesDoMes.length} sess{sessoesDoMes.length === 1 ? "ão" : "ões"}
+          {qtdSessoes} {qtdSessoes === 1 ? "sessão" : "sessões"}
+          {qtdMensalidades > 0 && ` · ${qtdMensalidades} ${qtdMensalidades === 1 ? "mensalidade" : "mensalidades"}`}
         </Indicador>
         <Indicador rotulo="A receber (mestres)" valor={formatarMoeda(aReceber)} destaque={aReceber > 0 ? "ambar" : undefined} />
         <Indicador rotulo="Pago" valor={formatarMoeda(total - aReceber)} destaque="verde" />
@@ -116,7 +123,7 @@ export default async function Page(props: PageProps<"/sessoes">) {
 
           <section className="cartao overflow-x-auto">
             {sessoes.length === 0 ? (
-              <Vazio>Nenhuma sessão em {rotuloMes(mes)} com esses filtros.</Vazio>
+              <Vazio>Nenhum lançamento em {rotuloMes(mes)} com esses filtros.</Vazio>
             ) : (
               <table className="tabela">
                 <thead>
@@ -133,7 +140,7 @@ export default async function Page(props: PageProps<"/sessoes">) {
                   {sessoes.map((s) => (
                     <tr key={s.id}>
                       <td className="whitespace-nowrap">
-                        {formatarData(s.data)}
+                        {dataDoLancamento(s)}
                         {s.observacoes && <p className="max-w-48 truncate text-xs text-slate-500">{s.observacoes}</p>}
                       </td>
                       <td>
@@ -151,27 +158,31 @@ export default async function Page(props: PageProps<"/sessoes">) {
                       <td>{s.mestre.nome}</td>
                       <td className="num">{formatarMoeda(s.valorCentavos)}</td>
                       <td className="whitespace-nowrap">
-                        <SeloSessao pagoEm={s.pagoEm} />
+                        <SeloSessao pagoEm={s.pagoEm} valorCentavos={s.valorCentavos} />
                       </td>
                       <td>
-                        <div className="flex justify-end gap-2">
+                        <div className="flex flex-wrap justify-end gap-2">
                           {s.pagoEm ? (
                             <form action={desfazerPagamento.bind(null, s.id)}>
                               <BotaoEnviar className="btn-secundario whitespace-nowrap" pendente="...">
                                 Desfazer pagamento
                               </BotaoEnviar>
                             </form>
-                          ) : (
+                          ) : s.valorCentavos > 0 ? (
                             <form action={marcarPaga.bind(null, s.id)}>
                               <BotaoEnviar className="btn-secundario whitespace-nowrap" pendente="...">
                                 Marcar como paga
                               </BotaoEnviar>
                             </form>
-                          )}
+                          ) : null}
                           <form action={excluirSessao.bind(null, s.id)}>
                             <BotaoConfirmar
                               className="btn-perigo"
-                              confirmacao={`Excluir a sessão de ${nomeDaSessao(s)} em ${formatarData(s.data)}?`}
+                              confirmacao={
+                                s.tipo === "MENSALIDADE"
+                                  ? `Excluir a mensalidade de ${nomeDaSessao(s)} de ${dataDoLancamento(s)}? Ela pode ser lançada de novo, com os alunos atuais.`
+                                  : `Excluir a sessão de ${nomeDaSessao(s)} em ${formatarData(s.data)}?`
+                              }
                             >
                               Excluir
                             </BotaoConfirmar>
@@ -185,12 +196,73 @@ export default async function Page(props: PageProps<"/sessoes">) {
             )}
           </section>
 
+          {mensalidades.length > 0 && (
+            <section className="cartao overflow-x-auto">
+              <div className="px-4 pt-4 pb-3">
+                <h2 className="text-sm font-semibold text-slate-900">
+                  Mensalidades por aluno · <span className="first-letter:uppercase">{rotuloMes(mes)}</span>
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Mesas em que o mestre recebe por aluno, por mês. Ao lançar, o valor fica gravado com os alunos da mesa
+                  naquele momento e entra em &quot;a receber&quot;. Se os alunos mudarem antes do pagamento, exclua a
+                  mensalidade na lista acima e lance de novo.
+                </p>
+              </div>
+              <table className="tabela">
+                <thead>
+                  <tr>
+                    <th>Mesa</th>
+                    <th>Mestre</th>
+                    <th className="num">Alunos × valor</th>
+                    <th className="num">Mensalidade</th>
+                    <th>Situação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mensalidades.map((m) => {
+                    const alunos = m.lancada ? (m.lancada.alunos ?? m.alunos) : m.alunos;
+                    const valor = m.lancada ? m.lancada.valorCentavos : m.valorCentavos;
+                    return (
+                      <tr key={m.mesaId}>
+                        <td>
+                          <Link href={`/mesas/${m.mesaId}`} className="link">
+                            {m.mesa}
+                          </Link>
+                        </td>
+                        <td>{m.mestre}</td>
+                        <td className="num text-slate-600">
+                          {alunos} × {formatarMoeda(alunos > 0 ? Math.round(valor / alunos) : m.valorAlunoCentavos)}
+                        </td>
+                        <td className="num font-medium">{formatarMoeda(valor)}</td>
+                        <td className="whitespace-nowrap">
+                          {m.lancada ? (
+                            <SeloSessao pagoEm={m.lancada.pagoEm} valorCentavos={m.lancada.valorCentavos} />
+                          ) : m.alunos === 0 ? (
+                            <span className="text-xs text-slate-500">Sem alunos</span>
+                          ) : (
+                            <span className="text-xs font-medium text-amber-700">Não lançada</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <LancarMensalidades
+                acao={lancarMensalidadesDoMes.bind(null, mes)}
+                pendentes={mensalidadesPendentes.length}
+                mesFuturo={mesFuturo}
+                rotulo={`Lançar ${mensalidadesPendentes.length === 1 ? "mensalidade" : `${mensalidadesPendentes.length} mensalidades`} de ${rotuloMes(mes)}`}
+              />
+            </section>
+          )}
+
           <section className="cartao overflow-x-auto">
             <h2 className="px-4 pt-4 pb-3 text-sm font-semibold text-slate-900">
               Resumo por mestre · <span className="first-letter:uppercase">{rotuloMes(mes)}</span>
             </h2>
             {resumo.length === 0 ? (
-              <Vazio>Sem sessões neste mês.</Vazio>
+              <Vazio>Sem lançamentos neste mês.</Vazio>
             ) : (
               <table className="tabela">
                 <thead>
@@ -219,9 +291,9 @@ export default async function Page(props: PageProps<"/sessoes">) {
                             <form action={marcarTodasPagas.bind(null, g.id, mes)}>
                               <BotaoConfirmar
                                 className="btn-primario whitespace-nowrap"
-                                confirmacao={`Marcar como pagas todas as sessões de ${g.nome} em ${rotuloMes(mes)} (${formatarMoeda(g.aReceber)})?`}
+                                confirmacao={`Marcar como pago tudo o que ${g.nome} tem a receber de ${rotuloMes(mes)} (${formatarMoeda(g.aReceber)})?`}
                               >
-                                Marcar todas como pagas
+                                Marcar tudo como pago
                               </BotaoConfirmar>
                             </form>
                           ) : (
@@ -246,6 +318,7 @@ export default async function Page(props: PageProps<"/sessoes">) {
               id: m.id,
               nome: m.nome,
               detalhe: m.tipoMesa.nome,
+              porAluno: m.tipoMesa.pagamentoMestre === "POR_ALUNO",
               mestreId: m.mestreId,
               valorCentavos: valorSessaoDaMesa(m, m.tipoMesa),
             }))}

@@ -76,10 +76,12 @@ describe("equivalente mensal", () => {
 describe("custo com mestres", () => {
   it("usa o valor da mesa quando definido, senão o do tipo", async () => {
     const { valorSessaoDaMesa, custoMensalPrevistoDaMesa } = await import("./finance");
-    const vip = { valorSessaoCentavos: 3_500 };
-    expect(valorSessaoDaMesa({ valorSessaoCentavos: null }, vip)).toBe(3_500);
+    const vip = { pagamentoMestre: "POR_SESSAO" as const, valorSessaoCentavos: 3_500, valorAlunoCentavos: 0 };
+    const mesa = { valorSessaoCentavos: null, valorAlunoCentavos: null, sessoesPorMes: 2 };
+    expect(valorSessaoDaMesa(mesa, vip)).toBe(3_500);
     expect(valorSessaoDaMesa({ valorSessaoCentavos: 4_000 }, vip)).toBe(4_000);
-    expect(custoMensalPrevistoDaMesa({ valorSessaoCentavos: null, sessoesPorMes: 2 }, vip)).toBe(7_000);
+    // o número de alunos não muda o custo de uma mesa paga por sessão
+    expect(custoMensalPrevistoDaMesa(mesa, vip, 5)).toBe(7_000);
   });
 });
 
@@ -92,5 +94,35 @@ describe("valor da sessão por tipo", () => {
     expect(valorDaSessao("DUPLA", 3_500, 3_000)).toBe(7_000);
     expect(valorDaSessao("ONESHOT", null, 3_000)).toBe(3_000);
     expect(() => valorDaSessao("NORMAL", null, 3_000)).toThrow();
+  });
+});
+
+describe("mesas pagas por aluno", () => {
+  const english = { pagamentoMestre: "POR_ALUNO" as const, valorSessaoCentavos: 3_500, valorAlunoCentavos: 20_000 };
+  const mesa = { valorSessaoCentavos: null, valorAlunoCentavos: null, sessoesPorMes: 4 };
+
+  it("não pagam por sessão", async () => {
+    const { valorSessaoDaMesa, valorDaSessao } = await import("./finance");
+    expect(valorSessaoDaMesa(mesa, english)).toBe(0);
+    expect(valorSessaoDaMesa({ valorSessaoCentavos: 4_000 }, english)).toBe(0);
+    expect(valorDaSessao("DUPLA", valorSessaoDaMesa(mesa, english), 3_500)).toBe(0);
+  });
+
+  it("mensalidade e custo previsto = alunos × valor por aluno", async () => {
+    const { mensalidadeDaMesa, custoMensalPrevistoDaMesa, valorAlunoDaMesa } = await import("./finance");
+    expect(mensalidadeDaMesa(mesa, english, 3)).toBe(60_000);
+    expect(custoMensalPrevistoDaMesa(mesa, english, 3)).toBe(60_000);
+    expect(custoMensalPrevistoDaMesa(mesa, english, 0)).toBe(0);
+    // valor próprio da mesa substitui o do tipo
+    expect(valorAlunoDaMesa({ valorAlunoCentavos: 25_000 }, english)).toBe(25_000);
+  });
+});
+
+describe("vagas", () => {
+  it("capacidade menos ocupação; grupo fechado zera", async () => {
+    const { vagasDaMesa } = await import("./finance");
+    expect(vagasDaMesa(6, 2, false)).toBe(4);
+    expect(vagasDaMesa(6, 7, false)).toBe(0);
+    expect(vagasDaMesa(6, 1, true)).toBe(0);
   });
 });

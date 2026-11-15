@@ -8,7 +8,7 @@ export default async function Page() {
   return (
     <>
       <Cabecalho titulo="Novo tipo de mesa" voltar={{ href: "/tipos-mesa", rotulo: "Tipos de mesa" }} />
-      <TipoMesaForm acao={criarTipoMesa} inicial={{ nome: "", valorSessaoCentavos: "35,00" }} />
+      <TipoMesaForm acao={criarTipoMesa} inicial={{ nome: "", pagamentoMestre: "POR_SESSAO", valorSessaoCentavos: "35,00", valorAlunoCentavos: "" }} />
     </>
   );
 }

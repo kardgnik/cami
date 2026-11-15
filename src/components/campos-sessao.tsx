@@ -7,7 +7,16 @@ import { formatarMoeda } from "@/lib/format";
 import { TIPOS_SESSAO } from "@/lib/labels";
 import type { EstadoForm } from "@/lib/validations";
 
-export type OpcaoMesaSessao = { id: number; nome: string; detalhe?: string; valorCentavos: number; mestreId?: number | null };
+export type OpcaoMesaSessao = {
+  id: number;
+  nome: string;
+  detalhe?: string;
+  /** Valor por sessão (0 nas mesas pagas por aluno). */
+  valorCentavos: number;
+  /** Mesa paga por aluno: a sessão é registrada sem valor. */
+  porAluno?: boolean;
+  mestreId?: number | null;
+};
 
 /**
  * Campos do registro de sessão, comuns ao painel do mestre e ao do gerente:
@@ -84,7 +93,7 @@ export function CamposSessao({
               {mesas.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.nome}
-                  {m.detalhe ? ` (${m.detalhe})` : ""} · {formatarMoeda(m.valorCentavos)}
+                  {m.detalhe ? ` (${m.detalhe})` : ""} · {m.porAluno ? "paga por aluno" : formatarMoeda(m.valorCentavos)}
                 </option>
               ))}
             </Selecao>
@@ -115,7 +124,11 @@ export function CamposSessao({
 
       <AreaTexto rotulo="Observações (opcional)" name="observacoes" defaultValue={v("observacoes")} erros={estado.erros?.observacoes} />
 
-      {valor !== null && (
+      {!oneshot && mesa?.porAluno ? (
+        <p className="rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          Esta mesa é paga por aluno: a sessão fica registrada sem valor, e o pagamento vem na mensalidade do mês.
+        </p>
+      ) : valor !== null && (
         <p className="rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600">
           {rotuloValor}: <strong className="text-emerald-700">{formatarMoeda(valor)}</strong>
           {tipo === "DUPLA" && " (sessão dupla: o dobro do valor da mesa)"}

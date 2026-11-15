@@ -17,7 +17,7 @@ export default async function Page(props: PageProps<"/tipos-mesa/[id]">) {
     <>
       <Cabecalho
         titulo={`Editar tipo: ${tipo.nome}`}
-        descricao="Mudar o valor afeta só as sessões registradas daqui em diante."
+        descricao="Mudar o valor afeta só as sessões e mensalidades lançadas daqui em diante."
         voltar={{ href: "/tipos-mesa", rotulo: "Tipos de mesa" }}
         acoes={
           <BotaoExcluir
@@ -28,7 +28,12 @@ export default async function Page(props: PageProps<"/tipos-mesa/[id]">) {
       />
       <TipoMesaForm
         acao={atualizarTipoMesa.bind(null, tipo.id)}
-        inicial={{ nome: tipo.nome, valorSessaoCentavos: paraInput(tipo.valorSessaoCentavos) }}
+        inicial={{
+          nome: tipo.nome,
+          pagamentoMestre: tipo.pagamentoMestre,
+          valorSessaoCentavos: paraInput(tipo.valorSessaoCentavos),
+          valorAlunoCentavos: tipo.valorAlunoCentavos ? paraInput(tipo.valorAlunoCentavos) : "",
+        }}
       />
     </>
   );

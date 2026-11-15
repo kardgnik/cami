@@ -7,6 +7,8 @@ import { intervaloDoMes, mesAtual, rotuloMes } from "@/lib/datas";
 import { prisma } from "@/lib/db";
 import { custoMensalPrevistoDaMesa, type ResultadoLiquido } from "@/lib/finance";
 import { descreverTaxa, formatarMoeda } from "@/lib/format";
+import { situacaoDasMesas } from "@/lib/mesas";
+import { mensalidadesDoMes } from "@/lib/sessoes";
 
 export const metadata = { title: "Visão geral · Gestão de Mesas" };
 
@@ -33,7 +35,7 @@ export default async function Page() {
   const mes = mesAtual();
   const { inicio, fim } = intervaloDoMes(mes);
 
-  const [assinaturasAtivas, jogadoresAtivos, jogadoresInadimplentes, mesasAtivas, ocupacao, sessoesMes, aPagar, mestres] =
+  const [assinaturasAtivas, jogadoresAtivos, jogadoresInadimplentes, mesasDoBanco, situacao, lancamentosMes, aPagar, mestres, mensalidades] =
     await Promise.all([
       prisma.assinatura.findMany({
         where: { status: "ATIVO" },
@@ -42,20 +44,23 @@ export default async function Page() {
       prisma.jogador.count({ where: { assinaturas: { some: { status: "ATIVO" } } } }),
       prisma.jogador.count({ where: { assinaturas: { some: { status: "INADIMPLENTE" } } } }),
       prisma.mesa.findMany({ where: { ativo: true }, include: { tipoMesa: true } }),
-      prisma.assinaturaMesa.groupBy({
-        by: ["mesaId"],
-        where: { assinatura: { status: { not: "CANCELADO" } }, mesa: { ativo: true } },
-        _count: true,
-      }),
+      situacaoDasMesas(),
       prisma.sessao.groupBy({
-        by: ["mestreId"],
+        by: ["mestreId", "tipo"],
         where: { data: { gte: inicio, lt: fim } },
         _count: true,
         _sum: { valorCentavos: true },
       }),
       prisma.sessao.groupBy({ by: ["mestreId"], where: { pagoEm: null }, _sum: { valorCentavos: true } }),
       prisma.mestre.findMany({ select: { id: true, nome: true, ativo: true }, orderBy: { nome: "asc" } }),
+      mensalidadesDoMes(mes),
     ]);
+  // custo previsto: por sessão × sessões/mês ou, nas mesas pagas por aluno, alunos × valor por aluno
+  const mesasAtivas = mesasDoBanco.map((m) => {
+    const { ocupacao, fechada } = situacao.de(m.id);
+    return { ...m, ocupacao, fechada, custo: custoMensalPrevistoDaMesa(m, m.tipoMesa, ocupacao) };
+  });
+  const mensalidadesALancar = mensalidades.filter((m) => !m.lancada && m.alunos > 0);
 
   // ---------- Entrada ----------
   const linhas = assinaturasAtivas.map((a) => ({ ...a, fin: financeiroDaAssinatura(a) }));
@@ -65,15 +70,21 @@ export default async function Page() {
   // ---------- Saída ----------
   const mesasComMestre = mesasAtivas.filter((m) => m.mestreId !== null);
   const mesasSemMestre = mesasAtivas.length - mesasComMestre.length;
-  const custoPrevisto = mesasComMestre.reduce((t, m) => t + custoMensalPrevistoDaMesa(m, m.tipoMesa), 0);
+  const custoPrevisto = mesasComMestre.reduce((t, m) => t + m.custo, 0);
   const resultado = entrada.liquido - custoPrevisto;
 
-  const sessoesPorMestre = new Map(sessoesMes.map((s) => [s.mestreId, s]));
+  // sessões do mês por mestre: a mensalidade entra no valor, mas não na contagem de sessões
+  const sessoesPorMestre = new Map<number, { sessoes: number; valor: number }>();
+  for (const g of lancamentosMes) {
+    const m = sessoesPorMestre.get(g.mestreId) ?? { sessoes: 0, valor: 0 };
+    if (g.tipo !== "MENSALIDADE") m.sessoes += g._count;
+    m.valor += g._sum.valorCentavos ?? 0;
+    sessoesPorMestre.set(g.mestreId, m);
+  }
   const aPagarPorMestre = new Map(aPagar.map((s) => [s.mestreId, s._sum.valorCentavos ?? 0]));
-  const qtdSessoesMes = sessoesMes.reduce((t, s) => t + s._count, 0);
-  const valorSessoesMes = sessoesMes.reduce((t, s) => t + (s._sum.valorCentavos ?? 0), 0);
+  const qtdSessoesMes = [...sessoesPorMestre.values()].reduce((t, s) => t + s.sessoes, 0);
+  const valorSessoesMes = [...sessoesPorMestre.values()].reduce((t, s) => t + s.valor, 0);
   const totalAPagar = aPagar.reduce((t, s) => t + (s._sum.valorCentavos ?? 0), 0);
-  const ocupadas = new Map(ocupacao.map((o) => [o.mesaId, o._count]));
 
   const porMestre = mestres
     .map((m) => {
@@ -83,9 +94,9 @@ export default async function Page() {
         id: m.id,
         nome: m.ativo ? m.nome : `${m.nome} (inativo)`,
         mesas: mesas.length,
-        custoPrevisto: mesas.reduce((t, x) => t + custoMensalPrevistoDaMesa(x, x.tipoMesa), 0),
-        sessoes: s?._count ?? 0,
-        valorMes: s?._sum.valorCentavos ?? 0,
+        custoPrevisto: mesas.reduce((t, x) => t + x.custo, 0),
+        sessoes: s?.sessoes ?? 0,
+        valorMes: s?.valor ?? 0,
         aPagar: aPagarPorMestre.get(m.id) ?? 0,
       };
     })
@@ -96,9 +107,9 @@ export default async function Page() {
   for (const m of mesasAtivas) {
     const t = tipos.get(m.tipoMesa.nome) ?? { nome: m.tipoMesa.nome, mesas: 0, ocupadas: 0, vagas: 0, custo: 0 };
     t.mesas += 1;
-    t.ocupadas += ocupadas.get(m.id) ?? 0;
+    t.ocupadas += m.ocupacao;
     t.vagas += m.capacidade;
-    if (m.mestreId !== null) t.custo += custoMensalPrevistoDaMesa(m, m.tipoMesa);
+    if (m.mestreId !== null) t.custo += m.custo;
     tipos.set(t.nome, t);
   }
   const porTipo = [...tipos.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
@@ -142,12 +153,13 @@ export default async function Page() {
       </div>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
-        <Indicador rotulo={`Sessões em ${rotuloMes(mes)}`} valor={formatarMoeda(valorSessoesMes)}>
+        <Indicador rotulo={`Lançado em ${rotuloMes(mes)}`} valor={formatarMoeda(valorSessoesMes)}>
           {qtdSessoesMes} sess{qtdSessoesMes === 1 ? "ão registrada" : "ões registradas"}
+          {mensalidades.some((m) => m.lancada) && " + mensalidades"}
         </Indicador>
         <Indicador rotulo="A pagar aos mestres" valor={formatarMoeda(totalAPagar)} destaque={totalAPagar > 0 ? "ambar" : undefined}>
           <Link href="/sessoes?status=a-receber" className="hover:underline">
-            Ver sessões a pagar
+            Ver o que falta pagar
           </Link>
         </Indicador>
         <Indicador rotulo="Mesas ativas" valor={String(mesasAtivas.length)}>
@@ -162,6 +174,20 @@ export default async function Page() {
           )}
         </Indicador>
       </div>
+
+      {mensalidadesALancar.length > 0 && (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {mensalidadesALancar.length === 1
+            ? "Há 1 mensalidade por aluno"
+            : `Há ${mensalidadesALancar.length} mensalidades por aluno`}{" "}
+          de {rotuloMes(mes)} ainda não lançada{mensalidadesALancar.length === 1 ? "" : "s"} (
+          {formatarMoeda(mensalidadesALancar.reduce((t, m) => t + m.valorCentavos, 0))}).{" "}
+          <Link href="/sessoes" className="link">
+            Lançar em Sessões e pagamentos
+          </Link>
+          .
+        </div>
+      )}
 
       {prejuizo.length > 0 && (
         <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -207,7 +233,7 @@ export default async function Page() {
                       <span className="hidden sm:inline">Custo previsto/mês</span>
                     </th>
                     <th className="num hidden md:table-cell">Sessões no mês</th>
-                    <th className="num hidden sm:table-cell">Valor no mês</th>
+                    <th className="num hidden sm:table-cell">Lançado no mês</th>
                     <th className="num">A pagar</th>
                   </tr>
                 </thead>

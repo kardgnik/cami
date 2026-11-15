@@ -18,7 +18,11 @@ export default async function Page() {
       select: { id: true, nome: true, usuario: true, telefone: true, ativo: true },
     }),
     prisma.mesa.groupBy({ by: ["mestreId"], where: { ativo: true, mestreId: { not: null } }, _count: true }),
-    prisma.sessao.groupBy({ by: ["mestreId"], where: { data: { gte: inicio, lt: fim } }, _count: true }),
+    prisma.sessao.groupBy({
+      by: ["mestreId"],
+      where: { data: { gte: inicio, lt: fim }, tipo: { not: "MENSALIDADE" } },
+      _count: true,
+    }),
     prisma.sessao.groupBy({ by: ["mestreId"], where: { pagoEm: null }, _sum: { valorCentavos: true } }),
   ]);
   const mesas = new Map(mesasAtivas.map((g) => [g.mestreId, g._count]));

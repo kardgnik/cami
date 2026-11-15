@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { intervaloDoMes, lerMes } from "@/lib/datas";
+import { intervaloDoMes, lerMes, rotuloMes } from "@/lib/datas";
 import { exigirGerente } from "@/lib/dal";
 import { prisma } from "@/lib/db";
-import { registrarSessaoComRegras } from "@/lib/sessoes";
+import { lancarMensalidades, registrarSessaoComRegras } from "@/lib/sessoes";
 import { lerFormulario, sessaoAdminSchema, validar, type EstadoForm } from "@/lib/validations";
 
 /** Registro feito pelo gerente em nome de um mestre. Não redireciona: devolve mensagem de sucesso. */
@@ -24,20 +24,34 @@ export async function registrarSessao(_: EstadoForm, formData: FormData): Promis
 
 export async function marcarPaga(id: number) {
   await exigirGerente();
-  await prisma.sessao.updateMany({ where: { id, pagoEm: null }, data: { pagoEm: new Date() } });
+  await prisma.sessao.updateMany({ where: { id, pagoEm: null, valorCentavos: { gt: 0 } }, data: { pagoEm: new Date() } });
   revalidatePath("/", "layout");
 }
 
 export async function desfazerPagamento(id: number) {
   await exigirGerente();
-  await prisma.sessao.update({ where: { id }, data: { pagoEm: null } });
+  // updateMany/deleteMany: um segundo clique num item que já mudou não vira erro
+  await prisma.sessao.updateMany({ where: { id }, data: { pagoEm: null } });
   revalidatePath("/", "layout");
 }
 
 export async function excluirSessao(id: number) {
   await exigirGerente();
-  await prisma.sessao.delete({ where: { id } });
+  await prisma.sessao.deleteMany({ where: { id } });
   revalidatePath("/", "layout");
+}
+
+/** Lança as mensalidades do mês das mesas pagas por aluno que ainda não têm lançamento. */
+export async function lancarMensalidadesDoMes(mes: string): Promise<EstadoForm> {
+  await exigirGerente();
+  const mesValido = lerMes(mes);
+  if (!mesValido) return { mensagem: "Mês inválido." };
+  const criadas = await lancarMensalidades(mesValido);
+  revalidatePath("/", "layout");
+  if (criadas === 0) return { mensagem: `Nenhuma mensalidade a lançar em ${rotuloMes(mesValido)}.` };
+  return {
+    sucesso: `${criadas} mensalidade${criadas === 1 ? " lançada" : "s lançadas"} em ${rotuloMes(mesValido)}. Agora ${criadas === 1 ? "ela aparece" : "elas aparecem"} como "a receber" para o mestre.`,
+  };
 }
 
 /** Marca como pagas todas as sessões ainda não pagas de um mestre no mês (data da sessão). */
@@ -47,7 +61,7 @@ export async function marcarTodasPagas(mestreId: number, mes: string) {
   if (!mesValido) return;
   const { inicio, fim } = intervaloDoMes(mesValido);
   await prisma.sessao.updateMany({
-    where: { mestreId, pagoEm: null, data: { gte: inicio, lt: fim } },
+    where: { mestreId, pagoEm: null, valorCentavos: { gt: 0 }, data: { gte: inicio, lt: fim } },
     data: { pagoEm: new Date() },
   });
   revalidatePath("/", "layout");

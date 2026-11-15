@@ -6,8 +6,12 @@ Sistema para administrar mesas de RPG por assinatura: jogadores, assinaturas, me
 
 - **Jogadores** são os assinantes. Um jogador pode ter **uma ou mais assinaturas**.
 - **Assinatura**: plano + plataforma de origem + método de pagamento. Cada assinatura cobre **até N mesas**, conforme o plano (campo "mesas incluídas").
-- **Mesas** são de um **tipo** (VIP ou Especial). Cada mesa tem um **mestre**, vários jogadores (capacidade padrão de 6) e uma previsão de sessões por mês (padrão 2).
-- **Mestres** recebem por sessão conduzida. O valor por sessão é definido no **tipo de mesa** (padrão R$ 35,00) e pode ser **personalizado em cada mesa**.
+- **Mesas** são de um **tipo** (VIP, Especial ou outros que você criar). Cada mesa tem um **mestre**, um **dia da semana** (opcional), vários jogadores (capacidade padrão de 6) e uma previsão de sessões por mês (padrão 2). A lista de mesas mostra as **vagas** de cada uma e filtra por "só com vagas", tipo, mestre e dia.
+- **Mestres** recebem conforme o **tipo de mesa**, e o valor pode ser **personalizado em cada mesa**:
+  - **Por sessão** (padrão, R$ 35,00): um valor a cada sessão registrada.
+  - **Por aluno, por mês** (ex.: English RPG, R$ 200,00 por aluno): o mestre recebe uma **mensalidade** = alunos da mesa × valor por aluno. As sessões dessas mesas ficam registradas sem valor. A mensalidade do mês é lançada pelo gerente em "Sessões e pagamentos" e passa a valer como qualquer outro valor a receber. Aluno = jogador com assinatura não cancelada vinculada à mesa.
+- **Grupo fechado**: um plano pode ser marcado como "grupo fechado". Ao vincular uma mesa a uma assinatura desse plano, a mesa fica **sem vagas**: só entram nela outros jogadores com plano de grupo fechado (os integrantes do grupo).
+- **Mais de um plano por jogador**: cada assinatura tem o seu plano e as suas mesas. Quem joga numa mesa Especial e numa normal tem duas assinaturas ("+ Adicionar outro plano" na página do jogador).
 - **Sessões**: o mestre registra no **painel do mestre** e a sessão já entra como "a receber". O valor é gravado no momento do registro, então mudanças de preço posteriores não alteram o histórico. O gerente **marca como paga** em "Sessões e pagamentos", uma por uma ou todas de um mestre no mês. Tipos de sessão:
 
   | Tipo | Mesa | Valor pago ao mestre |
@@ -53,7 +57,7 @@ Regras do cálculo:
 
 - O percentual é arredondado ao centavo a cada cobrança.
 - Na visão geral, planos não mensais são convertidos para o equivalente mensal. Um plano anual, por exemplo, é dividido por 12.
-- Custo previsto com mestres por mês = Σ (valor por sessão da mesa × sessões por mês) das mesas ativas que têm mestre.
+- Custo previsto com mestres por mês = Σ das mesas ativas que têm mestre: valor por sessão × sessões por mês ou, nas mesas pagas por aluno, alunos × valor por aluno.
 - Resultado previsto = receita líquida mensal − custo previsto com mestres.
 - As taxas usam sempre a configuração atual. Se a taxa de uma plataforma mudar, o líquido de todas as assinaturas dela muda junto. O sistema não guarda histórico de cobranças dos jogadores (só das sessões dos mestres).
 
@@ -148,7 +152,9 @@ Para acessar por um subdomínio (ex.: `https://mdl.luisk.com.br`) sem abrir port
 
 Se, pelo domínio, os formulários falharem com "Invalid Server Actions request" na janela do `iniciar.bat`, adicione `DOMINIO_PUBLICO="mdl.luisk.com.br"` ao `.env` e rode o `atualizar.bat` (o build precisa ser refeito).
 
-Se todos acessarem só pelo domínio (https), você pode trocar para `COOKIE_SECURE="true"` no `.env` e reiniciar. O acesso por `http://localhost` continua funcionando.
+Pelo domínio (https) o cookie de login já é marcado como seguro automaticamente; pelo endereço `http://` da rede local continua funcionando por causa do `COOKIE_SECURE="false"` que o instalador grava.
+
+O login tem um freio contra tentativa de adivinhar senha: depois de 8 senhas erradas para o mesmo usuário vindas do mesmo endereço, é preciso esperar até 10 minutos. Reiniciar o sistema zera a contagem. O painel também pede aos buscadores que não o indexem e não pode ser embutido em outros sites.
 
 ## Scripts
 

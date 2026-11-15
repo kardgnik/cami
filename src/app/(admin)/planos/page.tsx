@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { BotaoEnviar } from "@/components/botao-confirmar";
-import { Cabecalho, SeloAtivo, Vazio } from "@/components/ui";
+import { Cabecalho, Selo, SeloAtivo, Vazio } from "@/components/ui";
 import { exigirGerente } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { formatarMoeda } from "@/lib/format";
@@ -54,7 +54,9 @@ export default async function Page() {
               {planos.map((p) => (
                 <tr key={p.id} className={p.ativo ? "" : "text-slate-400"}>
                   <td>
-                    <p className="font-medium">{p.nome}</p>
+                    <p className="font-medium">
+                      {p.nome} {p.grupoFechado && <Selo cor="cinza">Grupo fechado</Selo>}
+                    </p>
                     {p.descricao && <p className="max-w-sm truncate text-xs text-slate-500">{p.descricao}</p>}
                   </td>
                   <td className="num">

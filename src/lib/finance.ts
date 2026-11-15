@@ -76,20 +76,46 @@ export function liquidoMensal(r: ResultadoLiquido, periodicidade: Periodicidade)
   };
 }
 
-/** Valor pago ao mestre por sessão: o da mesa, se definido, senão o do tipo da mesa. */
-export function valorSessaoDaMesa(
-  mesa: { valorSessaoCentavos: number | null },
-  tipo: { valorSessaoCentavos: number },
-): number {
+export type PagamentoMestre = "POR_SESSAO" | "POR_ALUNO";
+
+type ValoresDaMesa = { valorSessaoCentavos: number | null; valorAlunoCentavos: number | null };
+type ValoresDoTipo = { pagamentoMestre: PagamentoMestre; valorSessaoCentavos: number; valorAlunoCentavos: number };
+
+/**
+ * Valor pago ao mestre por sessão: o da mesa, se definido, senão o do tipo da mesa.
+ * Mesas pagas por aluno não pagam por sessão (o mestre recebe a mensalidade).
+ */
+export function valorSessaoDaMesa(mesa: Pick<ValoresDaMesa, "valorSessaoCentavos">, tipo: ValoresDoTipo): number {
+  if (tipo.pagamentoMestre === "POR_ALUNO") return 0;
   return mesa.valorSessaoCentavos ?? tipo.valorSessaoCentavos;
 }
 
-/** Custo mensal previsto de uma mesa com o mestre: valor por sessão × sessões por mês. */
+/** Valor por aluno, por mês, nas mesas pagas por aluno: o da mesa, se definido, senão o do tipo. */
+export function valorAlunoDaMesa(mesa: Pick<ValoresDaMesa, "valorAlunoCentavos">, tipo: ValoresDoTipo): number {
+  return mesa.valorAlunoCentavos ?? tipo.valorAlunoCentavos;
+}
+
+/** Mensalidade devida ao mestre de uma mesa paga por aluno: alunos × valor por aluno. */
+export function mensalidadeDaMesa(mesa: Pick<ValoresDaMesa, "valorAlunoCentavos">, tipo: ValoresDoTipo, alunos: number): number {
+  return valorAlunoDaMesa(mesa, tipo) * alunos;
+}
+
+/**
+ * Custo mensal previsto de uma mesa com o mestre: valor por sessão × sessões por
+ * mês ou, nas mesas pagas por aluno, alunos × valor por aluno.
+ */
 export function custoMensalPrevistoDaMesa(
-  mesa: { valorSessaoCentavos: number | null; sessoesPorMes: number },
-  tipo: { valorSessaoCentavos: number },
+  mesa: ValoresDaMesa & { sessoesPorMes: number },
+  tipo: ValoresDoTipo,
+  alunos: number,
 ): number {
+  if (tipo.pagamentoMestre === "POR_ALUNO") return mensalidadeDaMesa(mesa, tipo, alunos);
   return valorSessaoDaMesa(mesa, tipo) * mesa.sessoesPorMes;
+}
+
+/** Vagas livres de uma mesa. Com grupo fechado não há vagas, qualquer que seja a ocupação. */
+export function vagasDaMesa(capacidade: number, ocupacao: number, fechada: boolean): number {
+  return fechada ? 0 : Math.max(0, capacidade - ocupacao);
 }
 
 export type TipoSessao = "NORMAL" | "REPOSICAO" | "EXTRA" | "DUPLA" | "ONESHOT";

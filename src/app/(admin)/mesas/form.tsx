@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { AreaTexto, Campo, Erro, Selecao } from "@/components/form";
 import { formatarMoeda, paraInput } from "@/lib/format";
+import { DIAS_SEMANA, type PagamentoMestre } from "@/lib/labels";
 import type { EstadoForm } from "@/lib/validations";
 
 type Valores = {
@@ -12,11 +13,19 @@ type Valores = {
   tipoMesaId: string;
   mestreId: string;
   valorSessaoCentavos: string;
+  valorAlunoCentavos: string;
+  diaSemana: string;
   sessoesPorMes: string;
   capacidade: string;
 };
 
-export type OpcaoTipo = { id: number; nome: string; valorSessaoCentavos: number };
+export type OpcaoTipo = {
+  id: number;
+  nome: string;
+  pagamentoMestre: PagamentoMestre;
+  valorSessaoCentavos: number;
+  valorAlunoCentavos: number;
+};
 export type OpcaoMestre = { id: number; nome: string; ativo: boolean };
 
 export function MesaForm({
@@ -34,6 +43,7 @@ export function MesaForm({
   const v = { ...inicial, ...estado.valores } as Valores;
   const [tipoId, setTipoId] = useState(v.tipoMesaId);
   const tipo = tipos.find((t) => String(t.id) === tipoId);
+  const porAluno = tipo?.pagamentoMestre === "POR_ALUNO";
 
   return (
     <form action={enviar} className="cartao max-w-2xl space-y-5 p-6">
@@ -50,7 +60,10 @@ export function MesaForm({
           <option value="">Selecione...</option>
           {tipos.map((t) => (
             <option key={t.id} value={t.id}>
-              {t.nome} · {formatarMoeda(t.valorSessaoCentavos)}/sessão
+              {t.nome} ·{" "}
+              {t.pagamentoMestre === "POR_ALUNO"
+                ? `${formatarMoeda(t.valorAlunoCentavos)}/aluno por mês`
+                : `${formatarMoeda(t.valorSessaoCentavos)}/sessão`}
             </option>
           ))}
         </Selecao>
@@ -63,17 +76,47 @@ export function MesaForm({
           ))}
         </Selecao>
       </div>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Campo
-          rotulo="Valor por sessão (opcional)"
-          name="valorSessaoCentavos"
-          inputMode="decimal"
-          prefixo="R$"
-          placeholder={tipo ? paraInput(tipo.valorSessaoCentavos) : "0,00"}
-          defaultValue={v.valorSessaoCentavos}
-          erros={estado.erros?.valorSessaoCentavos}
-          ajuda={tipo ? `Vazio = valor do tipo (${formatarMoeda(tipo.valorSessaoCentavos)}).` : "Vazio = valor do tipo."}
-        />
+      <div className="grid gap-4 sm:grid-cols-2">
+        {/* O valor do outro modo de pagamento segue escondido, para não se perder ao trocar o tipo. */}
+        {porAluno ? (
+          <>
+            <Campo
+              key="aluno"
+              rotulo="Valor por aluno, por mês (opcional)"
+              name="valorAlunoCentavos"
+              inputMode="decimal"
+              prefixo="R$"
+              placeholder={paraInput(tipo.valorAlunoCentavos)}
+              defaultValue={v.valorAlunoCentavos}
+              erros={estado.erros?.valorAlunoCentavos}
+              ajuda={`Vazio = valor do tipo (${formatarMoeda(tipo.valorAlunoCentavos)}). O mestre recebe por aluno, não por sessão.`}
+            />
+            <input type="hidden" name="valorSessaoCentavos" value={v.valorSessaoCentavos} />
+          </>
+        ) : (
+          <>
+            <Campo
+              key="sessao"
+              rotulo="Valor por sessão (opcional)"
+              name="valorSessaoCentavos"
+              inputMode="decimal"
+              prefixo="R$"
+              placeholder={tipo ? paraInput(tipo.valorSessaoCentavos) : "0,00"}
+              defaultValue={v.valorSessaoCentavos}
+              erros={estado.erros?.valorSessaoCentavos}
+              ajuda={tipo ? `Vazio = valor do tipo (${formatarMoeda(tipo.valorSessaoCentavos)}).` : "Vazio = valor do tipo."}
+            />
+            <input type="hidden" name="valorAlunoCentavos" value={v.valorAlunoCentavos} />
+          </>
+        )}
+        <Selecao rotulo="Dia da semana (opcional)" name="diaSemana" defaultValue={v.diaSemana} erros={estado.erros?.diaSemana}>
+          <option value="">Não definido</option>
+          {DIAS_SEMANA.map((d) => (
+            <option key={d.valor} value={d.valor}>
+              {d.rotulo}
+            </option>
+          ))}
+        </Selecao>
         <Campo
           rotulo="Sessões por mês"
           name="sessoesPorMes"
@@ -83,7 +126,7 @@ export function MesaForm({
           required
           defaultValue={v.sessoesPorMes}
           erros={estado.erros?.sessoesPorMes}
-          ajuda="Usado na previsão de custo."
+          ajuda={porAluno ? "Só informativo: esta mesa é paga por aluno." : "Usado na previsão de custo."}
         />
         <Campo
           rotulo="Capacidade (jogadores)"

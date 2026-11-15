@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { exigirGerente } from "@/lib/dal";
 import { prisma } from "@/lib/db";
+import { situacaoDasMesas } from "@/lib/mesas";
 import { assinaturaSchema, jogadorSchema, lerFormulario, validar, type EstadoForm } from "@/lib/validations";
 
 // ---------- Jogador ----------
@@ -109,20 +110,18 @@ async function salvarAssinatura(
 
   // Capacidade: só ocupa vaga quem não está cancelado. Confere as mesas novas e,
   // se a assinatura estava cancelada e voltou a valer, também as que já tinha.
+  // Mesa com grupo fechado (de outra assinatura) só aceita quem também tem plano de grupo fechado.
   if (dados.status !== "CANCELADO") {
     const reativando = atual?.status === "CANCELADO";
+    const situacao = await situacaoDasMesas({ mesaIds: dados.mesaIds, excetoAssinaturaId: atual?.id });
     for (const mesaId of dados.mesaIds) {
       const mesa = porId.get(mesaId);
       if (!mesa || (jaVinculadas.has(mesaId) && !reativando)) continue;
-      const ocupadas = await prisma.assinaturaMesa.count({
-        where: {
-          mesaId,
-          assinatura: { status: { not: "CANCELADO" } },
-          ...(atual ? { assinaturaId: { not: atual.id } } : {}),
-        },
-      });
-      if (ocupadas >= mesa.capacidade) {
-        errosMesa.push(`A mesa ${mesa.nome} está cheia (${ocupadas}/${mesa.capacidade}).`);
+      const { ocupacao, fechada } = situacao.de(mesaId);
+      if (fechada && !plano?.grupoFechado) {
+        errosMesa.push(`A mesa ${mesa.nome} está fechada para um grupo.`);
+      } else if (ocupacao >= mesa.capacidade) {
+        errosMesa.push(`A mesa ${mesa.nome} está cheia (${ocupacao}/${mesa.capacidade}).`);
       }
     }
   }

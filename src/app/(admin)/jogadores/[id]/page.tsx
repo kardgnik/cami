@@ -6,7 +6,7 @@ import { financeiroDaAssinatura } from "@/lib/assinaturas";
 import { exigirGerente } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { formatarData, formatarMoeda } from "@/lib/format";
-import { rotuloPeriodicidade } from "@/lib/labels";
+import { rotuloDia, rotuloPeriodicidade } from "@/lib/labels";
 import { atualizarJogador, excluirAssinatura, excluirJogador } from "../actions";
 import { JogadorForm } from "../jogador-form";
 
@@ -25,7 +25,15 @@ export default async function Page(props: PageProps<"/jogadores/[id]">) {
           metodoPagamento: true,
           mesas: {
             include: {
-              mesa: { select: { id: true, nome: true, tipoMesa: { select: { nome: true } }, mestre: { select: { nome: true } } } },
+              mesa: {
+                select: {
+                  id: true,
+                  nome: true,
+                  diaSemana: true,
+                  tipoMesa: { select: { nome: true } },
+                  mestre: { select: { nome: true } },
+                },
+              },
             },
           },
         },
@@ -68,11 +76,15 @@ export default async function Page(props: PageProps<"/jogadores/[id]">) {
 
         <section className="min-w-0">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold text-slate-900">Assinaturas</h2>
+            <h2 className="text-sm font-semibold text-slate-900">Assinaturas (planos do jogador)</h2>
             <Link href={`/jogadores/${jogador.id}/assinaturas/nova`} className="btn-primario">
-              + Nova assinatura
+              {jogador.assinaturas.length === 0 ? "+ Nova assinatura" : "+ Adicionar outro plano"}
             </Link>
           </div>
+          <p className="mb-3 text-xs text-slate-500">
+            Um jogador pode ter mais de um plano ao mesmo tempo: cada assinatura tem o seu plano e as suas mesas. Ex.: uma
+            assinatura para a mesa Especial e outra para a mesa normal.
+          </p>
 
           {jogador.assinaturas.length === 0 ? (
             <div className="cartao px-6 py-10 text-center text-sm text-slate-500">
@@ -94,6 +106,7 @@ export default async function Page(props: PageProps<"/jogadores/[id]">) {
                           {a.plano.nome}{" "}
                           <span className="text-sm font-normal text-slate-500">
                             · {rotuloPeriodicidade(a.plano.periodicidade)}
+                            {a.plano.grupoFechado ? " · grupo fechado" : ""}
                           </span>
                         </p>
                         <p className="mt-0.5 text-sm text-slate-500">
@@ -118,7 +131,9 @@ export default async function Page(props: PageProps<"/jogadores/[id]">) {
                                   {v.mesa.nome}
                                 </Link>{" "}
                                 <span className="text-slate-500">
-                                  · {v.mesa.tipoMesa.nome} · {v.mesa.mestre ? `Mestre: ${v.mesa.mestre.nome}` : "Sem mestre"}
+                                  · {v.mesa.tipoMesa.nome}
+                                  {v.mesa.diaSemana ? ` · ${rotuloDia(v.mesa.diaSemana)}` : ""} ·{" "}
+                                  {v.mesa.mestre ? `Mestre: ${v.mesa.mestre.nome}` : "Sem mestre"}
                                 </span>
                               </li>
                             ))}

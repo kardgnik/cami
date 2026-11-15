@@ -1,11 +1,11 @@
 import { BotaoConfirmar } from "@/components/botao-confirmar";
 import { SeletorMes } from "@/components/seletor-mes";
 import { Cabecalho, DescricaoSessao, Indicador, SeloSessao, Vazio } from "@/components/ui";
-import { nomeDaSessao } from "@/lib/labels";
+import { dataDoLancamento, nomeDaSessao, rotuloDia } from "@/lib/labels";
 import { exigirMestre } from "@/lib/dal";
 import { hojeISO, intervaloDoMes, lerMes, mesAtual, rotuloMes } from "@/lib/datas";
 import { prisma } from "@/lib/db";
-import { valorSessaoDaMesa } from "@/lib/finance";
+import { mensalidadeDaMesa, valorAlunoDaMesa, valorSessaoDaMesa } from "@/lib/finance";
 import { formatarData, formatarMoeda } from "@/lib/format";
 import { excluirSessao } from "./actions";
 import { valorOneshot } from "@/lib/sessoes";
@@ -19,7 +19,7 @@ export default async function Page(props: PageProps<"/mestre">) {
 
   const [aReceber, sessoes, mesas] = await Promise.all([
     prisma.sessao.aggregate({
-      where: { mestreId: mestre.id, pagoEm: null },
+      where: { mestreId: mestre.id, pagoEm: null, valorCentavos: { gt: 0 } },
       _sum: { valorCentavos: true },
       _count: true,
     }),
@@ -49,8 +49,10 @@ export default async function Page(props: PageProps<"/mestre">) {
     id: m.id,
     nome: m.nome,
     detalhe: m.tipoMesa.nome,
+    porAluno: m.tipoMesa.pagamentoMestre === "POR_ALUNO",
     valorCentavos: valorSessaoDaMesa(m, m.tipoMesa),
   }));
+  const qtdSessoes = sessoes.filter((s) => s.tipo !== "MENSALIDADE").length;
   const valorDaOneshot = await valorOneshot();
 
   return (
@@ -59,10 +61,11 @@ export default async function Page(props: PageProps<"/mestre">) {
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Indicador rotulo="A receber" valor={formatarMoeda(aReceber._sum.valorCentavos ?? 0)} destaque="ambar">
-          {aReceber._count} {aReceber._count === 1 ? "sessão ainda não paga" : "sessões ainda não pagas"}
+          {aReceber._count} {aReceber._count === 1 ? "lançamento ainda não pago" : "lançamentos ainda não pagos"}
         </Indicador>
-        <Indicador rotulo={`Sessões em ${rotulo}`} valor={formatarMoeda(totalMes)}>
-          {sessoes.length} {sessoes.length === 1 ? "sessão" : "sessões"}
+        <Indicador rotulo={`Lançado em ${rotulo}`} valor={formatarMoeda(totalMes)}>
+          {qtdSessoes} {qtdSessoes === 1 ? "sessão" : "sessões"}
+          {sessoes.length > qtdSessoes && " + mensalidade"}
         </Indicador>
         <Indicador rotulo={`Recebido em ${rotulo}`} valor={formatarMoeda(pagoMes)} destaque="verde" />
       </div>
@@ -80,12 +83,12 @@ export default async function Page(props: PageProps<"/mestre">) {
 
       <section className="mt-6">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-slate-900">Minhas sessões</h2>
+          <h2 className="text-base font-semibold text-slate-900">Minhas sessões e mensalidades</h2>
           <SeletorMes caminho="/mestre" mes={mes} />
         </div>
         <div className="cartao overflow-x-auto">
           {sessoes.length === 0 ? (
-            <Vazio>Nenhuma sessão registrada em {rotulo}.</Vazio>
+            <Vazio>Nada lançado em {rotulo}.</Vazio>
           ) : (
             <table className="tabela">
               <thead>
@@ -102,17 +105,17 @@ export default async function Page(props: PageProps<"/mestre">) {
               <tbody>
                 {sessoes.map((s) => (
                   <tr key={s.id}>
-                    <td className="whitespace-nowrap">{formatarData(s.data)}</td>
+                    <td className="whitespace-nowrap">{dataDoLancamento(s)}</td>
                     <td>
                       <DescricaoSessao sessao={s} />
                       {s.observacoes && <p className="max-w-xs truncate text-xs text-slate-500">{s.observacoes}</p>}
                     </td>
                     <td className="num">{formatarMoeda(s.valorCentavos)}</td>
                     <td>
-                      <SeloSessao pagoEm={s.pagoEm} />
+                      <SeloSessao pagoEm={s.pagoEm} valorCentavos={s.valorCentavos} />
                     </td>
                     <td className="text-right">
-                      {!s.pagoEm && (
+                      {!s.pagoEm && s.tipo !== "MENSALIDADE" && (
                         <form action={excluirSessao.bind(null, s.id)}>
                           <BotaoConfirmar
                             className="btn-perigo"
@@ -141,6 +144,8 @@ export default async function Page(props: PageProps<"/mestre">) {
           <div className="grid gap-4 sm:grid-cols-2">
             {mesas.map((m) => {
               const nomes = [...new Set(m.assinaturas.map((a) => a.assinatura.jogador.nome.split(" ")[0]))];
+              const porAluno = m.tipoMesa.pagamentoMestre === "POR_ALUNO";
+              const dia = rotuloDia(m.diaSemana);
               return (
                 <div key={m.id} className="cartao p-5">
                   <div className="flex items-start justify-between gap-2">
@@ -150,10 +155,29 @@ export default async function Page(props: PageProps<"/mestre">) {
                     </span>
                   </div>
                   <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                    <dt className="text-slate-500">Por sessão</dt>
-                    <dd className="text-right font-medium tabular-nums">{formatarMoeda(valorSessaoDaMesa(m, m.tipoMesa))}</dd>
-                    <dt className="text-slate-500">Sessões/mês</dt>
-                    <dd className="text-right tabular-nums">{m.sessoesPorMes}</dd>
+                    {dia && (
+                      <>
+                        <dt className="text-slate-500">Dia</dt>
+                        <dd className="text-right">{dia}</dd>
+                      </>
+                    )}
+                    {porAluno ? (
+                      <>
+                        <dt className="text-slate-500">Por aluno, por mês</dt>
+                        <dd className="text-right font-medium tabular-nums">{formatarMoeda(valorAlunoDaMesa(m, m.tipoMesa))}</dd>
+                        <dt className="text-slate-500">Mensalidade hoje</dt>
+                        <dd className="text-right font-medium tabular-nums text-emerald-700">
+                          {formatarMoeda(mensalidadeDaMesa(m, m.tipoMesa, m.assinaturas.length))}
+                        </dd>
+                      </>
+                    ) : (
+                      <>
+                        <dt className="text-slate-500">Por sessão</dt>
+                        <dd className="text-right font-medium tabular-nums">{formatarMoeda(valorSessaoDaMesa(m, m.tipoMesa))}</dd>
+                        <dt className="text-slate-500">Sessões/mês</dt>
+                        <dd className="text-right tabular-nums">{m.sessoesPorMes}</dd>
+                      </>
+                    )}
                     <dt className="text-slate-500">Jogadores</dt>
                     <dd className="text-right tabular-nums">
                       {m.assinaturas.length}/{m.capacidade}

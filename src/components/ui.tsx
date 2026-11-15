@@ -59,13 +59,16 @@ export function Vazio({ children }: { children: ReactNode }) {
   return <div className="px-6 py-12 text-center text-sm text-slate-500">{children}</div>;
 }
 
-/** Status de pagamento de uma sessão ao mestre. */
-export function SeloSessao({ pagoEm }: { pagoEm: Date | null }) {
-  return pagoEm ? (
-    <Selo cor="verde">Pago em {pagoEm.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}</Selo>
-  ) : (
-    <Selo cor="amarelo">A receber</Selo>
-  );
+/**
+ * Status de pagamento de um lançamento ao mestre. Sessões sem valor (mesas pagas
+ * por aluno, em que o mestre recebe a mensalidade) não têm o que pagar.
+ */
+export function SeloSessao({ pagoEm, valorCentavos }: { pagoEm: Date | null; valorCentavos?: number }) {
+  if (pagoEm) {
+    return <Selo cor="verde">Pago em {pagoEm.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}</Selo>;
+  }
+  if (valorCentavos === 0) return <Selo cor="cinza">Sem valor</Selo>;
+  return <Selo cor="amarelo">A receber</Selo>;
 }
 
 /** Cartão de indicador (número grande com rótulo). */
@@ -97,20 +100,29 @@ export function DescricaoSessao({
   semNome,
 }: {
   sessao: {
-    tipo: "NORMAL" | "REPOSICAO" | "EXTRA" | "DUPLA" | "ONESHOT";
+    tipo: "NORMAL" | "REPOSICAO" | "EXTRA" | "DUPLA" | "ONESHOT" | "MENSALIDADE";
     mesa: { nome: string } | null;
     nomeOneshot: string | null;
     dataReferencia: Date | null;
+    /** Mensalidade: alunos que entraram no cálculo. */
+    alunos?: number | null;
   };
   /** Esconde o nome (ex.: na página da própria mesa). */
   semNome?: boolean;
 }) {
-  const rotulos = { REPOSICAO: "Reposição", EXTRA: "Extra", DUPLA: "Dupla", ONESHOT: "Oneshot" } as const;
+  const rotulos = { REPOSICAO: "Reposição", EXTRA: "Extra", DUPLA: "Dupla", ONESHOT: "Oneshot", MENSALIDADE: "Mensalidade" } as const;
   const nome = sessao.mesa ? sessao.mesa.nome : (sessao.nomeOneshot ?? "Oneshot");
   return (
     <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
       {!semNome && <span>{nome}</span>}
-      {sessao.tipo !== "NORMAL" && <Selo cor={sessao.tipo === "DUPLA" ? "verde" : "cinza"}>{rotulos[sessao.tipo]}</Selo>}
+      {sessao.tipo !== "NORMAL" && (
+        <Selo cor={sessao.tipo === "DUPLA" || sessao.tipo === "MENSALIDADE" ? "verde" : "cinza"}>{rotulos[sessao.tipo]}</Selo>
+      )}
+      {sessao.tipo === "MENSALIDADE" && sessao.alunos != null && (
+        <span className="text-xs text-slate-500">
+          {sessao.alunos} {sessao.alunos === 1 ? "aluno" : "alunos"}
+        </span>
+      )}
       {sessao.dataReferencia && (
         <span className="text-xs text-slate-500">
           repõe {sessao.dataReferencia.toLocaleDateString("pt-BR", { timeZone: "UTC" })}

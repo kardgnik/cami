@@ -97,6 +97,12 @@ const idOpcional = z
     return n;
   });
 
+/** Caixa de seleção: marcada chega como "on"; desmarcada nem chega no formulário. */
+const caixa = z
+  .string()
+  .optional()
+  .transform((v) => v === "on" || v === "true");
+
 const dataISO = z.iso.date("Data inválida.").transform((d) => new Date(`${d}T00:00:00Z`));
 
 const senhaNova = z.string().min(8, "A senha precisa ter ao menos 8 caracteres.").max(200, "Senha muito longa.");
@@ -116,6 +122,7 @@ export const planoSchema = z.object({
     error: "Selecione a periodicidade.",
   }),
   limiteMesas: inteiro("o número de mesas", 1, 50),
+  grupoFechado: caixa,
 });
 
 export const jogadorSchema = z.object({
@@ -139,10 +146,17 @@ export const assinaturaSchema = z.object({
     .transform((ids) => [...new Set(ids)]),
 });
 
-export const tipoMesaSchema = z.object({
-  nome,
-  valorSessaoCentavos: decimal("o valor por sessão"),
-});
+export const tipoMesaSchema = z
+  .object({
+    nome,
+    pagamentoMestre: z.enum(["POR_SESSAO", "POR_ALUNO"], { error: "Selecione como o mestre é pago." }),
+    valorSessaoCentavos: decimal("o valor por sessão"),
+    valorAlunoCentavos: decimal("o valor por aluno"),
+  })
+  .refine((d) => d.pagamentoMestre !== "POR_ALUNO" || d.valorAlunoCentavos > 0, {
+    path: ["valorAlunoCentavos"],
+    message: "Informe o valor por aluno.",
+  });
 
 export const mesaSchema = z.object({
   nome,
@@ -150,6 +164,16 @@ export const mesaSchema = z.object({
   tipoMesaId: id("o tipo de mesa"),
   mestreId: idOpcional,
   valorSessaoCentavos: decimalOpcional("o valor por sessão"),
+  valorAlunoCentavos: decimalOpcional("o valor por aluno"),
+  diaSemana: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v : null))
+    .pipe(
+      z
+        .enum(["DOMINGO", "SEGUNDA", "TERCA", "QUARTA", "QUINTA", "SEXTA", "SABADO"], { error: "Dia da semana inválido." })
+        .nullable(),
+    ),
   sessoesPorMes: inteiro("sessões por mês", 0, 31),
   capacidade: inteiro("a capacidade", 1, 50),
 });

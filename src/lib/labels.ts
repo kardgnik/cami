@@ -38,7 +38,11 @@ export const TIPOS_SESSAO: { valor: TipoSessao; rotulo: string; ajuda: string }[
   { valor: "DUPLA", rotulo: "Sessão dupla", ajuda: "Vale por duas sessões (paga o dobro)." },
 ];
 
-export function rotuloTipoSessao(t: TipoSessao) {
+/** Tipos de lançamento gravados: os tipos de sessão mais a mensalidade (mesas pagas por aluno). */
+export type TipoLancamento = TipoSessao | "MENSALIDADE";
+
+export function rotuloTipoSessao(t: TipoLancamento) {
+  if (t === "MENSALIDADE") return "Mensalidade";
   return TIPOS_SESSAO.find((x) => x.valor === t)?.rotulo ?? t;
 }
 
@@ -46,3 +50,37 @@ export function rotuloTipoSessao(t: TipoSessao) {
 export function nomeDaSessao(s: { mesa: { nome: string } | null; nomeOneshot: string | null }) {
   return s.mesa ? s.mesa.nome : `Oneshot: ${s.nomeOneshot ?? "sem nome"}`;
 }
+
+/** Data de um lançamento: dd/mm/aaaa, ou mm/aaaa quando é a mensalidade do mês. */
+export function dataDoLancamento(s: { tipo: TipoLancamento; data: Date }) {
+  const texto = s.data.toLocaleDateString("pt-BR", { timeZone: "UTC" });
+  return s.tipo === "MENSALIDADE" ? texto.slice(3) : texto;
+}
+
+export type DiaSemana = "DOMINGO" | "SEGUNDA" | "TERCA" | "QUARTA" | "QUINTA" | "SEXTA" | "SABADO";
+
+export const DIAS_SEMANA: { valor: DiaSemana; rotulo: string; curto: string }[] = [
+  { valor: "SEGUNDA", rotulo: "Segunda-feira", curto: "Seg" },
+  { valor: "TERCA", rotulo: "Terça-feira", curto: "Ter" },
+  { valor: "QUARTA", rotulo: "Quarta-feira", curto: "Qua" },
+  { valor: "QUINTA", rotulo: "Quinta-feira", curto: "Qui" },
+  { valor: "SEXTA", rotulo: "Sexta-feira", curto: "Sex" },
+  { valor: "SABADO", rotulo: "Sábado", curto: "Sáb" },
+  { valor: "DOMINGO", rotulo: "Domingo", curto: "Dom" },
+];
+
+export function rotuloDia(d: DiaSemana | null | undefined, curto = false) {
+  const dia = DIAS_SEMANA.find((x) => x.valor === d);
+  return dia ? (curto ? dia.curto : dia.rotulo) : null;
+}
+
+export type PagamentoMestre = "POR_SESSAO" | "POR_ALUNO";
+
+export const PAGAMENTOS_MESTRE: { valor: PagamentoMestre; rotulo: string; ajuda: string }[] = [
+  { valor: "POR_SESSAO", rotulo: "Por sessão", ajuda: "O mestre recebe um valor a cada sessão registrada." },
+  {
+    valor: "POR_ALUNO",
+    rotulo: "Por aluno, por mês",
+    ajuda: "O mestre recebe um valor mensal por aluno da mesa. As sessões ficam registradas sem valor.",
+  },
+];
