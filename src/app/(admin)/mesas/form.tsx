@@ -6,6 +6,7 @@ import { AreaTexto, Campo, Erro, Selecao } from "@/components/form";
 import { formatarMoeda, paraInput } from "@/lib/format";
 import { DIAS_SEMANA, type PagamentoMestre } from "@/lib/labels";
 import type { EstadoForm } from "@/lib/validations";
+import { FormAcao } from "@/components/form-acao";
 
 type Valores = {
   nome: string;
@@ -46,7 +47,7 @@ export function MesaForm({
   const porAluno = tipo?.pagamentoMestre === "POR_ALUNO";
 
   return (
-    <form action={enviar} className="cartao max-w-2xl space-y-5 p-6">
+    <FormAcao acao={enviar} className="cartao max-w-2xl space-y-5 p-6">
       <Campo rotulo="Nome da mesa" name="nome" required defaultValue={v.nome} erros={estado.erros?.nome} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Selecao
@@ -149,6 +150,6 @@ export function MesaForm({
           Cancelar
         </Link>
       </div>
-    </form>
+    </FormAcao>
   );
 }

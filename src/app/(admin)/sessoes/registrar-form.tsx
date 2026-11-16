@@ -5,6 +5,7 @@ import { CamposSessao, type OpcaoMesaSessao } from "@/components/campos-sessao";
 import { Erro, Selecao } from "@/components/form";
 import type { EstadoForm } from "@/lib/validations";
 import { registrarSessao } from "./actions";
+import { FormAcao } from "@/components/form-acao";
 
 export type OpcaoMestreSessao = { id: number; nome: string };
 
@@ -25,7 +26,7 @@ export function RegistrarSessaoForm({
 
   return (
     // após sucesso a key muda e o formulário volta limpo
-    <form action={enviar} className="cartao space-y-4 p-5" key={estado.sucesso ?? "form"}>
+    <FormAcao acao={enviar} className="cartao space-y-4 p-5" key={estado.sucesso ?? "form"}>
       <h2 className="text-sm font-semibold text-slate-900">Registrar sessão</h2>
       <p className="-mt-2 text-xs text-slate-500">Lançamento do gerente em nome de um mestre.</p>
       <CamposSessao
@@ -56,6 +57,6 @@ export function RegistrarSessaoForm({
       <button type="submit" disabled={pendente} className="btn-primario w-full">
         {pendente ? "Registrando..." : "Registrar sessão"}
       </button>
-    </form>
+    </FormAcao>
   );
 }

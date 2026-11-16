@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { AreaTexto, Campo, Erro } from "@/components/form";
 import type { EstadoForm } from "@/lib/validations";
+import { FormAcao } from "@/components/form-acao";
 
 type Valores = { nome: string; email: string; telefone: string; observacoes: string };
 
@@ -22,7 +23,7 @@ export function JogadorForm({
   const [estado, enviar, pendente] = useActionState(acao, {});
   const v = { ...inicial, ...estado.valores } as Valores;
   return (
-    <form action={enviar} className="cartao space-y-5 p-6">
+    <FormAcao acao={enviar} className="cartao space-y-5 p-6">
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo rotulo="Nome" name="nome" required defaultValue={v.nome} erros={estado.erros?.nome} className="sm:col-span-2" />
         <Campo rotulo="Telefone" name="telefone" type="tel" required defaultValue={v.telefone} erros={estado.erros?.telefone} />
@@ -51,6 +52,6 @@ export function JogadorForm({
           </Link>
         )}
       </div>
-    </form>
+    </FormAcao>
   );
 }

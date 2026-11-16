@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { AreaTexto, Campo, Erro, Selecao } from "@/components/form";
 import { PERIODICIDADES } from "@/lib/labels";
 import type { EstadoForm } from "@/lib/validations";
+import { FormAcao } from "@/components/form-acao";
 
 type Valores = {
   nome: string;
@@ -28,7 +29,7 @@ export function PlanoForm({
   // caixa desmarcada não vem no formulário: depois de um erro vale o que foi enviado, não o valor inicial
   const grupoFechado = (estado.valores ? estado.valores.grupoFechado : inicial.grupoFechado) === "on";
   return (
-    <form action={enviar} className="cartao max-w-xl space-y-5 p-6">
+    <FormAcao acao={enviar} className="cartao max-w-xl space-y-5 p-6">
       <Campo rotulo="Nome do plano" name="nome" required defaultValue={v.nome} erros={estado.erros?.nome} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo
@@ -91,6 +92,6 @@ export function PlanoForm({
           Cancelar
         </Link>
       </div>
-    </form>
+    </FormAcao>
   );
 }

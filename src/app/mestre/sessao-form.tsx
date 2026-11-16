@@ -5,6 +5,7 @@ import { CamposSessao, type OpcaoMesaSessao } from "@/components/campos-sessao";
 import { Erro } from "@/components/form";
 import type { EstadoForm } from "@/lib/validations";
 import { registrarSessao } from "./actions";
+import { FormAcao } from "@/components/form-acao";
 
 export function SessaoForm({
   mesas,
@@ -18,7 +19,7 @@ export function SessaoForm({
   const [estado, enviar, pendente] = useActionState(registrarSessao, {} as EstadoForm);
   return (
     // a key muda a cada registro com sucesso, limpando o formulário (data volta para hoje)
-    <form key={estado.sucesso ?? "form"} action={enviar} className="space-y-4">
+    <FormAcao key={estado.sucesso ?? "form"} acao={enviar} className="space-y-4">
       <CamposSessao estado={estado} mesas={mesas} hoje={hoje} valorOneshotCentavos={valorOneshotCentavos} />
       <Erro mensagem={estado.mensagem} />
       {estado.sucesso && (
@@ -29,6 +30,6 @@ export function SessaoForm({
       <button type="submit" disabled={pendente} className="btn-primario w-full sm:w-auto">
         {pendente ? "Registrando..." : "Registrar sessão"}
       </button>
-    </form>
+    </FormAcao>
   );
 }

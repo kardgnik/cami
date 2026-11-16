@@ -4,11 +4,12 @@ import { useActionState } from "react";
 import { Campo, Erro } from "@/components/form";
 import type { EstadoForm } from "@/lib/validations";
 import { trocarSenha } from "../actions";
+import { FormAcao } from "@/components/form-acao";
 
 export function SenhaForm() {
   const [estado, enviar, pendente] = useActionState(trocarSenha, {} as EstadoForm);
   return (
-    <form key={estado.sucesso ? "ok" : "form"} action={enviar} className="cartao max-w-md space-y-4 p-6">
+    <FormAcao key={estado.sucesso ? "ok" : "form"} acao={enviar} className="cartao max-w-md space-y-4 p-6">
       <Campo
         rotulo="Senha atual"
         name="senhaAtual"
@@ -44,6 +45,6 @@ export function SenhaForm() {
       <button type="submit" disabled={pendente} className="btn-primario">
         {pendente ? "Salvando..." : "Alterar senha"}
       </button>
-    </form>
+    </FormAcao>
   );
 }

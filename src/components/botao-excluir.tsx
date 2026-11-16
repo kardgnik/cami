@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import type { EstadoForm } from "@/lib/validations";
+import { FormAcao } from "@/components/form-acao";
 
 /**
  * Botão "Excluir" que pede confirmação e mostra o motivo quando a exclusão é
@@ -19,8 +20,8 @@ export function BotaoExcluir({
 }) {
   const [estado, enviar, pendente] = useActionState(acao, {} as EstadoForm);
   return (
-    <form
-      action={enviar}
+    <FormAcao
+      acao={enviar}
       onSubmit={(e) => {
         if (!window.confirm(confirmacao)) e.preventDefault();
       }}
@@ -34,6 +35,6 @@ export function BotaoExcluir({
           {estado.mensagem}
         </p>
       )}
-    </form>
+    </FormAcao>
   );
 }

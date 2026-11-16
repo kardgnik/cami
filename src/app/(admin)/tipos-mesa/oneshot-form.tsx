@@ -4,12 +4,13 @@ import { useActionState } from "react";
 import { Campo } from "@/components/form";
 import type { EstadoForm } from "@/lib/validations";
 import { salvarValorOneshot } from "./actions";
+import { FormAcao } from "@/components/form-acao";
 
 export function OneshotForm({ valorInicial }: { valorInicial: string }) {
   const [estado, enviar, pendente] = useActionState(salvarValorOneshot, {} as EstadoForm);
   const valor = typeof estado.valores?.valorOneshotCentavos === "string" ? estado.valores.valorOneshotCentavos : valorInicial;
   return (
-    <form action={enviar} className="cartao mt-6 max-w-xl space-y-4 p-5">
+    <FormAcao acao={enviar} className="cartao mt-6 max-w-xl space-y-4 p-5">
       <div>
         <h2 className="text-sm font-semibold text-slate-900">Oneshot paga</h2>
         <p className="mt-1 text-xs text-slate-500">
@@ -37,6 +38,6 @@ export function OneshotForm({ valorInicial }: { valorInicial: string }) {
           {estado.sucesso}
         </p>
       )}
-    </form>
+    </FormAcao>
   );
 }

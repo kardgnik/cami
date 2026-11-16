@@ -3,11 +3,12 @@
 import { useActionState } from "react";
 import { entrar } from "@/app/actions/auth";
 import { Campo, Erro } from "@/components/form";
+import { FormAcao } from "@/components/form-acao";
 
 export function LoginForm({ de }: { de: string }) {
   const [estado, acao, pendente] = useActionState(entrar, {});
   return (
-    <form action={acao} className="mt-6 space-y-4">
+    <FormAcao acao={acao} className="mt-6 space-y-4">
       <input type="hidden" name="de" value={de} />
       <Campo
         rotulo="Usuário"
@@ -32,6 +33,6 @@ export function LoginForm({ de }: { de: string }) {
       <button type="submit" disabled={pendente} className="btn-primario w-full">
         {pendente ? "Entrando..." : "Entrar"}
       </button>
-    </form>
+    </FormAcao>
   );
 }

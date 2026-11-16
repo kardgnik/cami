@@ -6,6 +6,7 @@ import { Campo, Erro } from "@/components/form";
 import { calcularTaxa } from "@/lib/finance";
 import { formatarMoeda, lerDecimal } from "@/lib/format";
 import type { EstadoForm } from "@/lib/validations";
+import { FormAcao } from "@/components/form-acao";
 
 type Valores = { nome: string; taxaPercentualBp: string; taxaFixaCentavos: string };
 
@@ -30,8 +31,8 @@ export function TaxaForm({
     pct !== null && fixo !== null ? calcularTaxa(EXEMPLO, { taxaPercentualBp: pct, taxaFixaCentavos: fixo }) : null;
 
   return (
-    <form
-      action={enviar}
+    <FormAcao
+      acao={enviar}
       className="cartao max-w-xl space-y-5 p-6"
       onInput={(e) => {
         const f = new FormData(e.currentTarget);
@@ -85,6 +86,6 @@ export function TaxaForm({
           Cancelar
         </Link>
       </div>
-    </form>
+    </FormAcao>
   );
 }

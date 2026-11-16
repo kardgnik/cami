@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { Campo, Erro } from "@/components/form";
 import { REGRA_USUARIO, type EstadoForm } from "@/lib/validations";
+import { FormAcao } from "@/components/form-acao";
 
 type Valores = { nome: string; usuario: string; email: string; telefone: string; chavePix: string };
 
@@ -19,7 +20,7 @@ export function MestreForm({
   const [estado, enviar, pendente] = useActionState(acao, {});
   const v = { ...inicial, ...estado.valores } as Valores;
   return (
-    <form action={enviar} className="cartao max-w-2xl space-y-5 p-6">
+    <FormAcao acao={enviar} className="cartao max-w-2xl space-y-5 p-6">
       <Campo rotulo="Nome" name="nome" required defaultValue={v.nome} erros={estado.erros?.nome} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo
@@ -66,6 +67,6 @@ export function MestreForm({
           Cancelar
         </Link>
       </div>
-    </form>
+    </FormAcao>
   );
 }

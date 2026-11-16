@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { Campo, Erro, Selecao } from "@/components/form";
 import { PAGAMENTOS_MESTRE, type PagamentoMestre } from "@/lib/labels";
 import type { EstadoForm } from "@/lib/validations";
+import { FormAcao } from "@/components/form-acao";
 
 type Valores = { nome: string; pagamentoMestre: string; valorSessaoCentavos: string; valorAlunoCentavos: string };
 
@@ -21,7 +22,7 @@ export function TipoMesaForm({
   const porAluno = pagamento === "POR_ALUNO";
 
   return (
-    <form action={enviar} className="cartao max-w-xl space-y-5 p-6">
+    <FormAcao acao={enviar} className="cartao max-w-xl space-y-5 p-6">
       <Campo rotulo="Nome" name="nome" required defaultValue={v.nome} erros={estado.erros?.nome} />
       <div>
         <Selecao
@@ -83,6 +84,6 @@ export function TipoMesaForm({
           Cancelar
         </Link>
       </div>
-    </form>
+    </FormAcao>
   );
 }
