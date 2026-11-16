@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { Cabecalho } from "@/components/ui";
 import { exigirGerente } from "@/lib/dal";
 import { prisma } from "@/lib/db";
-import { paraInputData } from "@/lib/format";
+import { paraInput, paraInputData } from "@/lib/format";
 import { carregarOpcoesAssinatura } from "../../../_opcoes";
 import { atualizarAssinatura } from "../../../actions";
 import { AssinaturaForm } from "../../../assinatura-form";
@@ -47,6 +47,9 @@ export default async function Page(props: PageProps<"/jogadores/[id]/assinaturas
           plataformaId: String(a.plataformaId),
           metodoPagamentoId: String(a.metodoPagamentoId),
           mesaIds: mesaIds.map(String),
+          promocao: a.valorPromocionalCentavos !== null ? "on" : undefined,
+          valorPromocionalCentavos: a.valorPromocionalCentavos !== null ? paraInput(a.valorPromocionalCentavos) : "",
+          promocaoAte: a.promocaoAte ? paraInputData(a.promocaoAte) : "",
         }}
       />
     </>

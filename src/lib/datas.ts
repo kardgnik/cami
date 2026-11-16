@@ -42,3 +42,16 @@ export function rotuloMes(mes: string): string {
 export function dataDoISO(iso: string): Date {
   return new Date(`${iso}T00:00:00Z`);
 }
+
+/**
+ * Último dia de um período de `meses` meses que começa em `inicioISO` ("AAAA-MM-DD").
+ * Ex.: 16/11/2026 + 6 meses → 15/05/2027. Fim de mês é ajustado (31/01 + 1 mês → 27/02).
+ */
+export function fimDoPeriodo(inicioISO: string, meses: number): string {
+  const [ano, mes, dia] = inicioISO.split("-").map(Number);
+  const alvoMes = mes - 1 + meses;
+  const ultimoDiaDoMes = new Date(Date.UTC(ano, alvoMes + 1, 0)).getUTCDate();
+  const inicioDoProximo = new Date(Date.UTC(ano, alvoMes, Math.min(dia, ultimoDiaDoMes)));
+  inicioDoProximo.setUTCDate(inicioDoProximo.getUTCDate() - 1);
+  return inicioDoProximo.toISOString().slice(0, 10);
+}

@@ -133,18 +133,39 @@ export const jogadorSchema = z.object({
 });
 
 /** `mesaIds` vem de checkboxes com name="mesaIds[]". */
-export const assinaturaSchema = z.object({
-  planoId: id("o plano"),
-  plataformaId: id("a plataforma"),
-  metodoPagamentoId: id("o método de pagamento"),
-  status: z.enum(["ATIVO", "INADIMPLENTE", "CANCELADO"], { error: "Selecione o status." }),
-  dataInicio: dataISO,
-  observacoes: textoOpcional(1000),
-  mesaIds: z
-    .array(z.coerce.number().int().positive())
-    .default([])
-    .transform((ids) => [...new Set(ids)]),
-});
+export const assinaturaSchema = z
+  .object({
+    planoId: id("o plano"),
+    plataformaId: id("a plataforma"),
+    metodoPagamentoId: id("o método de pagamento"),
+    status: z.enum(["ATIVO", "INADIMPLENTE", "CANCELADO"], { error: "Selecione o status." }),
+    dataInicio: dataISO,
+    observacoes: textoOpcional(1000),
+    mesaIds: z
+      .array(z.coerce.number().int().positive())
+      .default([])
+      .transform((ids) => [...new Set(ids)]),
+    promocao: caixa,
+    valorPromocionalCentavos: decimalOpcional("o valor promocional"),
+    promocaoAte: z
+      .string()
+      .optional()
+      .transform((v) => (v ? v : null))
+      .pipe(dataISO.nullable()),
+  })
+  .transform(({ promocao, ...d }, ctx) => {
+    // Sem a caixa marcada, os campos da promoção são ignorados (e apagados ao salvar).
+    if (!promocao) return { ...d, valorPromocionalCentavos: null, promocaoAte: null };
+    if (!d.valorPromocionalCentavos) {
+      ctx.addIssue({ code: "custom", path: ["valorPromocionalCentavos"], message: "Informe o valor promocional." });
+    }
+    if (!d.promocaoAte) {
+      ctx.addIssue({ code: "custom", path: ["promocaoAte"], message: "Informe até quando vale a promoção." });
+    } else if (d.promocaoAte.getTime() < d.dataInicio.getTime()) {
+      ctx.addIssue({ code: "custom", path: ["promocaoAte"], message: "A promoção não pode terminar antes do início da assinatura." });
+    }
+    return d;
+  });
 
 export const tipoMesaSchema = z
   .object({

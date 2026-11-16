@@ -129,3 +129,19 @@ export function valorDaSessao(tipo: TipoSessao, valorMesaCentavos: number | null
   if (valorMesaCentavos === null) throw new Error("Sessão que não é oneshot precisa de mesa.");
   return tipo === "DUPLA" ? valorMesaCentavos * 2 : valorMesaCentavos;
 }
+
+export type Promocao = { valorPromocionalCentavos: number | null; promocaoAte: Date | null };
+
+/** A promoção vale no dia `hojeISO` ("AAAA-MM-DD")? Vale até `promocaoAte`, inclusive. */
+export function promocaoVigente(p: Promocao, hojeISO: string): boolean {
+  if (p.valorPromocionalCentavos === null || !p.promocaoAte) return false;
+  return hojeISO <= p.promocaoAte.toISOString().slice(0, 10);
+}
+
+/**
+ * Valor cobrado hoje: o promocional enquanto a promoção vale; depois, o do plano.
+ * Por ser calculado na hora, a assinatura "sobe" sozinha quando a promoção acaba.
+ */
+export function valorVigente(valorPlanoCentavos: number, p: Promocao, hojeISO: string): number {
+  return promocaoVigente(p, hojeISO) ? p.valorPromocionalCentavos! : valorPlanoCentavos;
+}

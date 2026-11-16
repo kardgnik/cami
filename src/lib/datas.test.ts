@@ -20,3 +20,14 @@ describe("datas", () => {
     expect(rotuloMes("2026-11")).toBe("novembro de 2026");
   });
 });
+
+describe("fim do período de promoção", () => {
+  it("6 meses a partir de 16/11/2026 terminam em 15/05/2027", async () => {
+    const { fimDoPeriodo } = await import("./datas");
+    expect(fimDoPeriodo("2026-11-16", 6)).toBe("2027-05-15");
+    expect(fimDoPeriodo("2026-01-01", 1)).toBe("2026-01-31");
+    expect(fimDoPeriodo("2026-01-31", 1)).toBe("2026-02-27"); // fevereiro de 2026 tem 28 dias
+    expect(fimDoPeriodo("2028-01-31", 1)).toBe("2028-02-28"); // 2028 é bissexto
+    expect(fimDoPeriodo("2026-12-10", 3)).toBe("2027-03-09");
+  });
+});

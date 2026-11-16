@@ -126,3 +126,15 @@ describe("vagas", () => {
     expect(vagasDaMesa(6, 1, true)).toBe(0);
   });
 });
+
+describe("valor promocional", () => {
+  it("vale até a data final (inclusive) e depois volta ao valor do plano", async () => {
+    const { valorVigente, promocaoVigente } = await import("./finance");
+    const p = { valorPromocionalCentavos: 3_990, promocaoAte: new Date("2027-05-15T00:00:00Z") };
+    expect(valorVigente(7_980, p, "2026-11-16")).toBe(3_990);
+    expect(valorVigente(7_980, p, "2027-05-15")).toBe(3_990);
+    expect(valorVigente(7_980, p, "2027-05-16")).toBe(7_980);
+    expect(promocaoVigente(p, "2027-05-16")).toBe(false);
+    expect(valorVigente(7_980, { valorPromocionalCentavos: null, promocaoAte: null }, "2026-11-16")).toBe(7_980);
+  });
+});

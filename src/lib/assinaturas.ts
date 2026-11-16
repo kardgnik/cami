@@ -1,15 +1,30 @@
 import "server-only";
-import { calcularLiquido, liquidoMensal, type Periodicidade, type ResultadoLiquido, type Taxa } from "./finance";
+import { hojeISO } from "./datas";
+import {
+  calcularLiquido,
+  liquidoMensal,
+  valorVigente,
+  type Periodicidade,
+  type Promocao,
+  type ResultadoLiquido,
+  type Taxa,
+} from "./finance";
 
-type ComRelacoes = {
+type ComRelacoes = Promocao & {
   plano: { valorCentavos: number; periodicidade: Periodicidade };
   plataforma: Taxa;
   metodoPagamento: Taxa;
 };
 
-/** Valores por cobrança e equivalente mensal de uma assinatura, com as taxas atuais. */
-export function financeiroDaAssinatura(a: ComRelacoes): { porCobranca: ResultadoLiquido; mensal: ResultadoLiquido } {
-  const porCobranca = calcularLiquido(a.plano.valorCentavos, a.plataforma, a.metodoPagamento);
+/**
+ * Valores por cobrança e equivalente mensal de uma assinatura, com as taxas atuais
+ * e o valor vigente no dia (promocional enquanto a promoção vale, senão o do plano).
+ */
+export function financeiroDaAssinatura(
+  a: ComRelacoes,
+  hoje: string = hojeISO(),
+): { porCobranca: ResultadoLiquido; mensal: ResultadoLiquido } {
+  const porCobranca = calcularLiquido(valorVigente(a.plano.valorCentavos, a, hoje), a.plataforma, a.metodoPagamento);
   return { porCobranca, mensal: liquidoMensal(porCobranca, a.plano.periodicidade) };
 }
 

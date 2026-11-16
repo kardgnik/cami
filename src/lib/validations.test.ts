@@ -170,3 +170,25 @@ describe("novos campos", () => {
     expect(validar(sessaoSchema, fd({ tipo: "MENSALIDADE", mesaId: "1", data: "2026-11-01" })).ok).toBe(false);
   });
 });
+
+describe("assinatura com valor promocional", () => {
+  const base = { planoId: "1", plataformaId: "2", metodoPagamentoId: "3", status: "ATIVO", dataInicio: "2026-11-16" };
+
+  it("sem a caixa marcada, ignora os campos da promoção", async () => {
+    const { assinaturaSchema } = await import("./validations");
+    const r = validar(assinaturaSchema, fd({ ...base, valorPromocionalCentavos: "39,90", promocaoAte: "2027-05-15" }));
+    expect(r.ok && r.dados).toMatchObject({ valorPromocionalCentavos: null, promocaoAte: null });
+    expect(r.ok && "promocao" in r.dados).toBe(false);
+  });
+
+  it("com a caixa marcada, exige valor e data final não anterior ao início", async () => {
+    const { assinaturaSchema } = await import("./validations");
+    const ok = validar(assinaturaSchema, fd({ ...base, promocao: "on", valorPromocionalCentavos: "39,90", promocaoAte: "2027-05-15" }));
+    expect(ok.ok && ok.dados.valorPromocionalCentavos).toBe(3_990);
+    expect(ok.ok && ok.dados.promocaoAte?.toISOString()).toBe("2027-05-15T00:00:00.000Z");
+    const semValor = validar(assinaturaSchema, fd({ ...base, promocao: "on", promocaoAte: "2027-05-15" }));
+    expect(!semValor.ok && semValor.estado.erros?.valorPromocionalCentavos).toBeTruthy();
+    const antes = validar(assinaturaSchema, fd({ ...base, promocao: "on", valorPromocionalCentavos: "39,90", promocaoAte: "2026-11-01" }));
+    expect(!antes.ok && antes.estado.erros?.promocaoAte).toBeTruthy();
+  });
+});

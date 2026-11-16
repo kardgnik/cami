@@ -3,10 +3,10 @@ import type { ReactNode } from "react";
 import { Cabecalho, Indicador, Vazio } from "@/components/ui";
 import { financeiroDaAssinatura, somar } from "@/lib/assinaturas";
 import { exigirGerente } from "@/lib/dal";
-import { intervaloDoMes, mesAtual, rotuloMes } from "@/lib/datas";
+import { hojeISO, intervaloDoMes, mesAtual, rotuloMes } from "@/lib/datas";
 import { prisma } from "@/lib/db";
 import { custoMensalPrevistoDaMesa, type ResultadoLiquido } from "@/lib/finance";
-import { descreverTaxa, formatarMoeda } from "@/lib/format";
+import { descreverTaxa, formatarData, formatarMoeda } from "@/lib/format";
 import { situacaoDasMesas } from "@/lib/mesas";
 import { mensalidadesDoMes } from "@/lib/sessoes";
 
@@ -66,6 +66,24 @@ export default async function Page() {
   const linhas = assinaturasAtivas.map((a) => ({ ...a, fin: financeiroDaAssinatura(a) }));
   const entrada = somar(linhas.map((l) => l.fin.mensal));
   const prejuizo = linhas.filter((l) => l.fin.porCobranca.liquido <= 0);
+
+  // Promoções que acabam nos próximos 30 dias: quanto o líquido mensal sobe quando acabarem.
+  const hoje = hojeISO();
+  const daqui30 = new Date(`${hoje}T00:00:00Z`);
+  daqui30.setUTCDate(daqui30.getUTCDate() + 30);
+  const promocoesAcabando = linhas
+    .filter((l) => l.promocaoAte && l.valorPromocionalCentavos !== null)
+    .filter((l) => {
+      const fim = l.promocaoAte!.toISOString().slice(0, 10);
+      return fim >= hoje && fim <= daqui30.toISOString().slice(0, 10);
+    })
+    .map((l) => {
+      const diaSeguinte = new Date(l.promocaoAte!);
+      diaSeguinte.setUTCDate(diaSeguinte.getUTCDate() + 1);
+      const depois = financeiroDaAssinatura(l, diaSeguinte.toISOString().slice(0, 10)).mensal.liquido;
+      return { id: l.id, jogadorId: l.jogadorId, nome: l.jogador.nome, fim: l.promocaoAte!, aumento: depois - l.fin.mensal.liquido };
+    })
+    .sort((a, b) => a.fim.getTime() - b.fim.getTime());
 
   // ---------- Saída ----------
   const mesasComMestre = mesasAtivas.filter((m) => m.mestreId !== null);
@@ -186,6 +204,29 @@ export default async function Page() {
             Lançar em Sessões e pagamentos
           </Link>
           .
+        </div>
+      )}
+
+      {promocoesAcabando.length > 0 && (
+        <div className="mt-4 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
+          <p>
+            {promocoesAcabando.length === 1
+              ? "1 promoção termina nos próximos 30 dias"
+              : `${promocoesAcabando.length} promoções terminam nos próximos 30 dias`}
+            : a receita líquida sobe{" "}
+            <strong>{formatarMoeda(promocoesAcabando.reduce((t, p) => t + p.aumento, 0))}/mês</strong> quando acabarem. O
+            valor muda sozinho, não é preciso editar nada.
+          </p>
+          <ul className="mt-1 text-xs">
+            {promocoesAcabando.slice(0, 8).map((p) => (
+              <li key={p.id}>
+                <Link href={`/jogadores/${p.jogadorId}`} className="link">
+                  {p.nome}
+                </Link>{" "}
+                · até {formatarData(p.fim)} · +{formatarMoeda(p.aumento)}/mês
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

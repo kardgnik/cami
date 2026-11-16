@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BotaoConfirmar } from "@/components/botao-confirmar";
-import { Cabecalho, SeloStatus } from "@/components/ui";
+import { Cabecalho, Selo, SeloStatus } from "@/components/ui";
 import { financeiroDaAssinatura } from "@/lib/assinaturas";
+import { hojeISO } from "@/lib/datas";
+import { promocaoVigente } from "@/lib/finance";
 import { exigirGerente } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { formatarData, formatarMoeda } from "@/lib/format";
@@ -41,6 +43,7 @@ export default async function Page(props: PageProps<"/jogadores/[id]">) {
     },
   });
   if (!jogador) notFound();
+  const hoje = hojeISO();
 
   return (
     <>
@@ -98,6 +101,8 @@ export default async function Page(props: PageProps<"/jogadores/[id]">) {
             <ul className="space-y-4">
               {jogador.assinaturas.map((a) => {
                 const { porCobranca } = financeiroDaAssinatura(a);
+                const temPromocao = a.valorPromocionalCentavos !== null && a.promocaoAte !== null;
+                const emPromocao = temPromocao && promocaoVigente(a, hoje);
                 return (
                   <li key={a.id} className={`cartao p-5 ${a.status === "CANCELADO" ? "opacity-70" : ""}`}>
                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -112,6 +117,24 @@ export default async function Page(props: PageProps<"/jogadores/[id]">) {
                         <p className="mt-0.5 text-sm text-slate-500">
                           {a.plataforma.nome} · {a.metodoPagamento.nome} · desde {formatarData(a.dataInicio)}
                         </p>
+                        {temPromocao && (
+                          <p className="mt-1 text-sm">
+                            {emPromocao ? (
+                              <>
+                                <Selo cor="verde">Promoção</Selo>{" "}
+                                <span className="text-slate-600">
+                                  {formatarMoeda(a.valorPromocionalCentavos!)} até {formatarData(a.promocaoAte!)} · depois{" "}
+                                  {formatarMoeda(a.plano.valorCentavos)}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-xs text-slate-500">
+                                Promoção de {formatarMoeda(a.valorPromocionalCentavos!)} encerrada em{" "}
+                                {formatarData(a.promocaoAte!)}: valendo o valor do plano.
+                              </span>
+                            )}
+                          </p>
+                        )}
                       </div>
                       <SeloStatus status={a.status} />
                     </div>

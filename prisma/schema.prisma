@@ -128,6 +128,10 @@ model Assinatura {
   metodoPagamentoId Int
   status            StatusAssinatura @default(ATIVO)
   dataInicio        DateTime         @db.Date
+  /// Promoção: valor cobrado no lugar do valor do plano até `promocaoAte` (inclusive).
+  /// Depois dessa data a assinatura volta sozinha ao valor do plano.
+  valorPromocionalCentavos Int?
+  promocaoAte              DateTime? @db.Date
   observacoes       String?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
