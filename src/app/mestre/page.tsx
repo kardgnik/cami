@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db";
 import { mensalidadeDaMesa, valorAlunoDaMesa, valorSessaoDaMesa } from "@/lib/finance";
 import { formatarData, formatarMoeda } from "@/lib/format";
 import { excluirSessao } from "./actions";
+import { mesasDoMestre } from "@/lib/mesas";
 import { valorOneshot } from "@/lib/sessoes";
 import { SessaoForm } from "./sessao-form";
 
@@ -25,14 +26,16 @@ export default async function Page(props: PageProps<"/mestre">) {
     }),
     prisma.sessao.findMany({
       where: { mestreId: mestre.id, data: { gte: inicio, lt: fim } },
-      include: { mesa: { select: { nome: true } } },
+      include: { mesa: { select: { nome: true, mestreId: true, mestre2Id: true } } },
       orderBy: [{ data: "desc" }, { id: "desc" }],
     }),
     prisma.mesa.findMany({
-      where: { mestreId: mestre.id, ativo: true },
+      where: { ativo: true, ...mesasDoMestre(mestre.id) },
       orderBy: { nome: "asc" },
       include: {
         tipoMesa: true,
+        mestre: { select: { id: true, nome: true } },
+        mestre2: { select: { id: true, nome: true } },
         // jogadores com assinatura não cancelada; só o nome (o mestre não vê contato nem financeiro)
         assinaturas: {
           where: { assinatura: { status: { not: "CANCELADO" } } },
@@ -119,7 +122,9 @@ export default async function Page(props: PageProps<"/mestre">) {
                         <form action={excluirSessao.bind(null, s.id)}>
                           <BotaoConfirmar
                             className="btn-perigo"
-                            confirmacao={`Excluir a sessão de ${formatarData(s.data)} (${nomeDaSessao(s)})?`}
+                            confirmacao={`Excluir a sessão de ${formatarData(s.data)} (${nomeDaSessao(s)})?${
+                              s.mesa?.mestre2Id ? " Ela também sai do outro mestre da mesa, se ainda não foi paga." : ""
+                            }`}
                           >
                             Excluir
                           </BotaoConfirmar>
@@ -145,11 +150,15 @@ export default async function Page(props: PageProps<"/mestre">) {
             {mesas.map((m) => {
               const nomes = [...new Set(m.assinaturas.map((a) => a.assinatura.jogador.nome.split(" ")[0]))];
               const porAluno = m.tipoMesa.pagamentoMestre === "POR_ALUNO";
+              const colega = [m.mestre, m.mestre2].find((x) => x && x.id !== mestre.id)?.nome;
               const dia = rotuloDia(m.diaSemana);
               return (
                 <div key={m.id} className="cartao p-5">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="font-semibold text-slate-900">{m.nome}</p>
+                    <div>
+                      <p className="font-semibold text-slate-900">{m.nome}</p>
+                      {colega && <p className="text-xs text-slate-500">com {colega} · cada um recebe o valor cheio</p>}
+                    </div>
                     <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
                       {m.tipoMesa.nome}
                     </span>

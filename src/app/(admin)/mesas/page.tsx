@@ -4,10 +4,16 @@ import { Cabecalho, Selo, SeloAtivo, Vazio } from "@/components/ui";
 import type { Prisma } from "@/generated/prisma/client";
 import { exigirGerente } from "@/lib/dal";
 import { prisma } from "@/lib/db";
-import { custoMensalPrevistoDaMesa, vagasDaMesa, valorAlunoDaMesa, valorSessaoDaMesa } from "@/lib/finance";
+import {
+  custoMensalPrevistoDaMesa,
+  custoPrevistoComMestres,
+  vagasDaMesa,
+  valorAlunoDaMesa,
+  valorSessaoDaMesa,
+} from "@/lib/finance";
 import { formatarMoeda } from "@/lib/format";
 import { DIAS_SEMANA, rotuloDia, type DiaSemana } from "@/lib/labels";
-import { situacaoDasMesas } from "@/lib/mesas";
+import { mesasDoMestre, mestresDaMesa, situacaoDasMesas } from "@/lib/mesas";
 import { alternarMesa } from "./actions";
 import { AvisoSemTipo } from "./aviso-sem-tipo";
 
@@ -29,7 +35,7 @@ export default async function Page(props: PageProps<"/mesas">) {
 
   const where: Prisma.MesaWhereInput = {
     tipoMesaId,
-    mestreId: semMestre ? null : mestreId,
+    ...(semMestre ? { mestreId: null } : mestreId ? mesasDoMestre(mestreId) : {}),
     diaSemana,
     // "com vagas" só faz sentido para mesas em uso
     ativo: vagas === "com" ? true : undefined,
@@ -38,7 +44,11 @@ export default async function Page(props: PageProps<"/mesas">) {
   const [todas, tipos, mestres] = await Promise.all([
     prisma.mesa.findMany({
       where,
-      include: { tipoMesa: true, mestre: { select: { id: true, nome: true, ativo: true } } },
+      include: {
+        tipoMesa: true,
+        mestre: { select: { id: true, nome: true, ativo: true } },
+        mestre2: { select: { id: true, nome: true, ativo: true } },
+      },
       orderBy: [{ ativo: "desc" }, { nome: "asc" }],
     }),
     prisma.tipoMesa.findMany({ orderBy: { nome: "asc" }, select: { id: true, nome: true } }),
@@ -54,7 +64,11 @@ export default async function Page(props: PageProps<"/mesas">) {
         fechada,
         vagas: vagasDaMesa(m.capacidade, ocupacao, fechada),
         porAluno: m.tipoMesa.pagamentoMestre === "POR_ALUNO",
-        custo: custoMensalPrevistoDaMesa(m, m.tipoMesa, ocupacao),
+        // com dois mestres cada um recebe o valor cheio; sem mestre, mostra o custo de um
+        custo: custoPrevistoComMestres(
+          custoMensalPrevistoDaMesa(m, m.tipoMesa, ocupacao),
+          Math.max(1, mestresDaMesa(m).length),
+        ),
       };
     })
     .filter((m) => (vagas === "com" ? m.vagas > 0 : vagas === "sem" ? m.vagas === 0 : true));
@@ -166,10 +180,13 @@ export default async function Page(props: PageProps<"/mesas">) {
                     <td className="whitespace-nowrap">{rotuloDia(m.diaSemana, true) ?? <span className="text-slate-400">—</span>}</td>
                     <td>
                       {m.mestre ? (
-                        <>
-                          {m.mestre.nome}
-                          {!m.mestre.ativo && <span className="text-xs text-slate-400"> (inativo)</span>}
-                        </>
+                        [m.mestre, m.mestre2].filter((x) => x !== null).map((x, i) => (
+                          <span key={x.id} className="block whitespace-nowrap">
+                            {i > 0 && <span className="text-xs text-slate-400">e </span>}
+                            {x.nome}
+                            {!x.ativo && <span className="text-xs text-slate-400"> (inativo)</span>}
+                          </span>
+                        ))
                       ) : (
                         <Selo cor="amarelo">Sem mestre</Selo>
                       )}

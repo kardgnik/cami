@@ -179,25 +179,36 @@ export const tipoMesaSchema = z
     message: "Informe o valor por aluno.",
   });
 
-export const mesaSchema = z.object({
-  nome,
-  descricao: textoOpcional(500),
-  tipoMesaId: id("o tipo de mesa"),
-  mestreId: idOpcional,
-  valorSessaoCentavos: decimalOpcional("o valor por sessão"),
-  valorAlunoCentavos: decimalOpcional("o valor por aluno"),
-  diaSemana: z
-    .string()
-    .optional()
-    .transform((v) => (v ? v : null))
-    .pipe(
-      z
-        .enum(["DOMINGO", "SEGUNDA", "TERCA", "QUARTA", "QUINTA", "SEXTA", "SABADO"], { error: "Dia da semana inválido." })
-        .nullable(),
-    ),
-  sessoesPorMes: inteiro("sessões por mês", 0, 31),
-  capacidade: inteiro("a capacidade", 1, 50),
-});
+export const mesaSchema = z
+  .object({
+    nome,
+    descricao: textoOpcional(500),
+    tipoMesaId: id("o tipo de mesa"),
+    mestreId: idOpcional,
+    /** Segundo mestre (opcional): mestram juntos e cada um recebe o valor cheio. */
+    mestre2Id: idOpcional,
+    valorSessaoCentavos: decimalOpcional("o valor por sessão"),
+    valorAlunoCentavos: decimalOpcional("o valor por aluno"),
+    diaSemana: z
+      .string()
+      .optional()
+      .transform((v) => (v ? v : null))
+      .pipe(
+        z
+          .enum(["DOMINGO", "SEGUNDA", "TERCA", "QUARTA", "QUINTA", "SEXTA", "SABADO"], { error: "Dia da semana inválido." })
+          .nullable(),
+      ),
+    sessoesPorMes: inteiro("sessões por mês", 0, 31),
+    capacidade: inteiro("a capacidade", 1, 50),
+  })
+  .transform((d, ctx) => {
+    if (d.mestre2Id !== null && d.mestre2Id === d.mestreId) {
+      ctx.addIssue({ code: "custom", path: ["mestre2Id"], message: "O segundo mestre precisa ser outra pessoa." });
+    }
+    // só o segundo preenchido: ele passa a ser o principal
+    if (d.mestreId === null && d.mestre2Id !== null) return { ...d, mestreId: d.mestre2Id, mestre2Id: null };
+    return d;
+  });
 
 const mestreBase = {
   nome,

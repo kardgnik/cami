@@ -33,3 +33,21 @@ export async function situacaoDasMesas(opcoes: { mesaIds?: number[]; excetoAssin
   }
   return { de: (mesaId: number): SituacaoMesa => mapa.get(mesaId) ?? VAZIA };
 }
+
+type ComMestres = { mestreId: number | null; mestre2Id: number | null };
+
+/** Ids dos mestres da mesa (0, 1 ou 2), principal primeiro. */
+export function mestresDaMesa(m: ComMestres): number[] {
+  return [m.mestreId, m.mestre2Id].filter((id): id is number => id !== null);
+}
+
+/** Filtro do Prisma: mesas em que o mestre é o principal ou o segundo. */
+export function mesasDoMestre(mestreId: number) {
+  return { OR: [{ mestreId }, { mestre2Id: mestreId }] };
+}
+
+/** "Rafa", "Rafa e Bia" ou null. */
+export function nomesDosMestres(m: { mestre: { nome: string } | null; mestre2: { nome: string } | null }): string | null {
+  const nomes = [m.mestre?.nome, m.mestre2?.nome].filter(Boolean);
+  return nomes.length ? nomes.join(" e ") : null;
+}

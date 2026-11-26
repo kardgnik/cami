@@ -15,15 +15,20 @@ async function salvar(id: number | null, formData: FormData): Promise<EstadoForm
   const atual = id ? await prisma.mesa.findUnique({ where: { id } }) : null;
   if (id && !atual) return { mensagem: "Mesa não encontrada." };
 
-  const [tipo, mestre] = await Promise.all([
+  const [tipo, mestre, mestre2] = await Promise.all([
     prisma.tipoMesa.findUnique({ where: { id: r.dados.tipoMesaId } }),
     r.dados.mestreId ? prisma.mestre.findUnique({ where: { id: r.dados.mestreId } }) : null,
+    r.dados.mestre2Id ? prisma.mestre.findUnique({ where: { id: r.dados.mestre2Id } }) : null,
   ]);
   const erros: Record<string, string[]> = {};
   if (!tipo) erros.tipoMesaId = ["Tipo de mesa inválido."];
   // aceita manter um mestre que foi desativado depois, mas não escolher um inativo
-  if (r.dados.mestreId && (!mestre || (!mestre.ativo && atual?.mestreId !== mestre.id)))
-    erros.mestreId = ["Mestre indisponível."];
+  const jaEstava = (id: number) => atual?.mestreId === id || atual?.mestre2Id === id;
+  if (r.dados.mestreId && (!mestre || (!mestre.ativo && !jaEstava(mestre.id)))) erros.mestreId = ["Mestre indisponível."];
+  if (r.dados.mestre2Id && (!mestre2 || (!mestre2.ativo && !jaEstava(mestre2.id)))) erros.mestre2Id = ["Mestre indisponível."];
+  if (r.dados.mestre2Id && tipo?.pagamentoMestre === "POR_ALUNO") {
+    erros.mestre2Id = ["Mesas pagas por aluno têm um só mestre."];
+  }
   if (Object.keys(erros).length) return { erros, valores };
 
   try {

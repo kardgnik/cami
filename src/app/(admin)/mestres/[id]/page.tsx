@@ -25,10 +25,16 @@ export default async function Page(props: PageProps<"/mestres/[id]">) {
       telefone: true,
       chavePix: true,
       ativo: true,
-      mesas: { include: { tipoMesa: true }, orderBy: [{ ativo: "desc" }, { nome: "asc" }] },
+      mesas: { include: { tipoMesa: true, mestre2: { select: { nome: true } } } },
+      mesasComoSegundo: { include: { tipoMesa: true, mestre: { select: { nome: true } } } },
     },
   });
   if (!mestre) notFound();
+  // mesas em que é o principal ou o segundo mestre, com o nome do colega (se houver)
+  const mesasDoMestre = [
+    ...mestre.mesas.map((m) => ({ ...m, colega: m.mestre2?.nome ?? null })),
+    ...mestre.mesasComoSegundo.map((m) => ({ ...m, colega: m.mestre?.nome ?? null })),
+  ].sort((a, b) => Number(b.ativo) - Number(a.ativo) || a.nome.localeCompare(b.nome, "pt-BR"));
 
   const { inicio, fim } = intervaloDoMes(mesAtual());
   // pagoEm é um instante: o mês começa à meia-noite de Brasília (UTC-3, sem horário de verão)
@@ -49,7 +55,9 @@ export default async function Page(props: PageProps<"/mestres/[id]">) {
     totalSessoes > 0
       ? `Também serão apagados ${totalSessoes} lançamento(s) dele (sessões e mensalidades), inclusive as já pagas${(aReceber._sum.valorCentavos ?? 0) > 0 ? ` e ${formatarMoeda(aReceber._sum.valorCentavos ?? 0)} ainda a receber` : ""}.`
       : "",
-    mestre.mesas.length > 0 ? `${mestre.mesas.length} mesa(s) ficarão sem mestre (não são apagadas).` : "",
+    mesasDoMestre.length > 0
+      ? `${mesasDoMestre.length} mesa(s) deixarão de ter este mestre (as mesas não são apagadas; se houver um segundo mestre, ele continua).`
+      : "",
     "Esta ação não pode ser desfeita. Para só tirar o acesso, prefira desativar o mestre.",
   ]
     .filter(Boolean)
@@ -93,7 +101,7 @@ export default async function Page(props: PageProps<"/mestres/[id]">) {
 
       <section className="cartao mt-8 overflow-x-auto">
         <h2 className="px-4 pt-4 pb-3 text-sm font-semibold text-slate-900">Mesas deste mestre</h2>
-        {mestre.mesas.length === 0 ? (
+        {mesasDoMestre.length === 0 ? (
           <Vazio>
             Nenhuma mesa. Atribua o mestre na{" "}
             <Link href="/mesas" className="link">
@@ -113,12 +121,13 @@ export default async function Page(props: PageProps<"/mestres/[id]">) {
               </tr>
             </thead>
             <tbody>
-              {mestre.mesas.map((m) => (
+              {mesasDoMestre.map((m) => (
                 <tr key={m.id} className={m.ativo ? "" : "text-slate-400"}>
                   <td>
                     <Link href={`/mesas/${m.id}`} className="link">
                       {m.nome}
                     </Link>
+                    {m.colega && <p className="text-xs text-slate-500">com {m.colega}</p>}
                   </td>
                   <td>{m.tipoMesa.nome}</td>
                   <td>{rotuloDia(m.diaSemana, true) ?? "—"}</td>

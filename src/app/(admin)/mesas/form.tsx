@@ -13,6 +13,7 @@ type Valores = {
   descricao: string;
   tipoMesaId: string;
   mestreId: string;
+  mestre2Id: string;
   valorSessaoCentavos: string;
   valorAlunoCentavos: string;
   diaSemana: string;
@@ -77,6 +78,32 @@ export function MesaForm({
           ))}
         </Selecao>
       </div>
+      {porAluno ? (
+        <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+          Mesas pagas por aluno têm um só mestre.
+          {v.mestre2Id && " Ao salvar, o segundo mestre desta mesa será removido."}
+        </p>
+      ) : (
+        <Selecao
+          rotulo="Segundo mestre (opcional)"
+          name="mestre2Id"
+          defaultValue={v.mestre2Id}
+          erros={estado.erros?.mestre2Id}
+          className="sm:max-w-[calc(50%-0.5rem)]"
+        >
+          <option value="">Nenhum</option>
+          {mestres.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.ativo ? m.nome : `${m.nome} (inativo)`}
+            </option>
+          ))}
+        </Selecao>
+      )}
+      {!porAluno && (
+        <p className="-mt-3 text-xs text-slate-500">
+          Com dois mestres, eles mestram juntos: a sessão é registrada uma vez e cada um recebe o valor cheio.
+        </p>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         {/* O valor do outro modo de pagamento segue escondido, para não se perder ao trocar o tipo. */}
         {porAluno ? (

@@ -192,8 +192,11 @@ model Mestre {
   ativo     Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  mesas     Mesa[]
-  sessoes   Sessao[]
+  /// Mesas em que é o mestre principal.
+  mesas            Mesa[]   @relation("MestrePrincipal")
+  /// Mesas em que é o segundo mestre (mestram juntos; cada um recebe o valor cheio).
+  mesasComoSegundo Mesa[]   @relation("SegundoMestre")
+  sessoes          Sessao[]
 
   @@map("mestres")
 }
@@ -204,6 +207,9 @@ model Mesa {
   descricao           String?
   tipoMesaId          Int
   mestreId            Int?
+  /// Segundo mestre (opcional). Mestram juntos: a sessão é registrada uma vez e cada
+  /// mestre recebe o valor cheio. Mesas pagas por aluno não têm segundo mestre.
+  mestre2Id           Int?
   /// Se preenchido, substitui o valor por sessão do tipo da mesa.
   valorSessaoCentavos Int?
   /// Se preenchido, substitui o valor por aluno/mês do tipo da mesa (tipos pagos por aluno).
@@ -218,11 +224,13 @@ model Mesa {
   updatedAt           DateTime         @updatedAt
 
   tipoMesa    TipoMesa         @relation(fields: [tipoMesaId], references: [id], onDelete: Restrict)
-  mestre      Mestre?          @relation(fields: [mestreId], references: [id], onDelete: SetNull)
+  mestre      Mestre?          @relation("MestrePrincipal", fields: [mestreId], references: [id], onDelete: SetNull)
+  mestre2     Mestre?          @relation("SegundoMestre", fields: [mestre2Id], references: [id], onDelete: SetNull)
   assinaturas AssinaturaMesa[]
   sessoes     Sessao[]
 
   @@index([mestreId])
+  @@index([mestre2Id])
   @@index([tipoMesaId])
   @@map("mesas")
 }
@@ -255,8 +263,9 @@ model Sessao {
   mestre Mestre @relation(fields: [mestreId], references: [id], onDelete: Restrict)
 
   // o tipo entra na chave para a mensalidade (datada no dia 1º) conviver com uma sessão nesse dia;
-  // sessões de tipos diferentes na mesma mesa e data são barradas em lib/sessoes.ts
-  @@unique([mesaId, data, tipo])
+  // o mestre entra porque, numa mesa com dois mestres, cada um tem o seu lançamento da sessão.
+  // Sessões duplicadas (mesma mesa e data) são barradas em lib/sessoes.ts.
+  @@unique([mesaId, data, tipo, mestreId])
   @@index([mestreId, pagoEm])
   @@index([data])
   @@map("sessoes")

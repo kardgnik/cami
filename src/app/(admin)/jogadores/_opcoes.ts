@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import type { DiaSemana } from "@/lib/labels";
-import { situacaoDasMesas } from "@/lib/mesas";
+import { nomesDosMestres, situacaoDasMesas } from "@/lib/mesas";
 
 export type OpcaoMesa = {
   id: number;
@@ -68,6 +68,7 @@ export async function carregarOpcoesAssinatura(atual?: Atual) {
         ativo: true,
         tipoMesa: { select: { nome: true } },
         mestre: { select: { nome: true } },
+        mestre2: { select: { nome: true } },
       },
     }),
     situacaoDasMesas({ excetoAssinaturaId: atual?.id }),
@@ -77,7 +78,7 @@ export async function carregarOpcoesAssinatura(atual?: Atual) {
     id: m.id,
     nome: m.nome,
     tipo: m.tipoMesa.nome,
-    mestre: m.mestre?.nome ?? null,
+    mestre: nomesDosMestres(m),
     diaSemana: m.diaSemana,
     capacidade: m.capacidade,
     ocupacaoOutras: situacao.de(m.id).ocupacao,

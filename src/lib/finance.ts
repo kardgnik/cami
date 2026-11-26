@@ -113,6 +113,14 @@ export function custoMensalPrevistoDaMesa(
   return valorSessaoDaMesa(mesa, tipo) * mesa.sessoesPorMes;
 }
 
+/**
+ * Custo mensal previsto da mesa considerando quantos mestres ela tem: com dois mestres
+ * (mestram juntos) cada um recebe o valor cheio, então o custo dobra. Sem mestre, 0.
+ */
+export function custoPrevistoComMestres(custoDaMesa: number, qtdMestres: number): number {
+  return custoDaMesa * qtdMestres;
+}
+
 /** Vagas livres de uma mesa. Com grupo fechado não há vagas, qualquer que seja a ocupação. */
 export function vagasDaMesa(capacidade: number, ocupacao: number, fechada: boolean): number {
   return fechada ? 0 : Math.max(0, capacidade - ocupacao);

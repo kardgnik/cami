@@ -192,3 +192,17 @@ describe("assinatura com valor promocional", () => {
     expect(!antes.ok && antes.estado.erros?.promocaoAte).toBeTruthy();
   });
 });
+
+describe("mesa com dois mestres", () => {
+  const base = { nome: "M", tipoMesaId: "1", valorSessaoCentavos: "", sessoesPorMes: "2", capacidade: "6" };
+  it("aceita dois mestres diferentes e recusa o mesmo duas vezes", () => {
+    const ok = validar(mesaSchema, fd({ ...base, mestreId: "1", mestre2Id: "2" }));
+    expect(ok.ok && ok.dados).toMatchObject({ mestreId: 1, mestre2Id: 2 });
+    const igual = validar(mesaSchema, fd({ ...base, mestreId: "1", mestre2Id: "1" }));
+    expect(!igual.ok && igual.estado.erros?.mestre2Id).toBeTruthy();
+  });
+  it("só o segundo preenchido vira o principal", () => {
+    const r = validar(mesaSchema, fd({ ...base, mestreId: "", mestre2Id: "2" }));
+    expect(r.ok && r.dados).toMatchObject({ mestreId: 2, mestre2Id: null });
+  });
+});

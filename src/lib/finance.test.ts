@@ -138,3 +138,12 @@ describe("valor promocional", () => {
     expect(valorVigente(7_980, { valorPromocionalCentavos: null, promocaoAte: null }, "2026-11-16")).toBe(7_980);
   });
 });
+
+describe("mesa com dois mestres", () => {
+  it("cada mestre recebe o valor cheio: o custo previsto dobra", async () => {
+    const { custoPrevistoComMestres } = await import("./finance");
+    expect(custoPrevistoComMestres(7_000, 2)).toBe(14_000);
+    expect(custoPrevistoComMestres(7_000, 1)).toBe(7_000);
+    expect(custoPrevistoComMestres(7_000, 0)).toBe(0);
+  });
+});

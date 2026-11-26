@@ -232,7 +232,7 @@ export function AssinaturaForm({
                           </span>
                         </span>
                         <span className="block text-xs text-slate-500">
-                          {m.mestre ? `Mestre: ${m.mestre}` : "Sem mestre"} ·{" "}
+                          {m.mestre ? `${m.mestre.includes(" e ") ? "Mestres" : "Mestre"}: ${m.mestre}` : "Sem mestre"} ·{" "}
                           <span className={ocupacao >= m.capacidade ? "font-medium text-amber-700" : ""}>
                             {ocupacao}/{m.capacidade} jogadores
                           </span>

@@ -24,10 +24,23 @@ export async function registrarSessao(_: EstadoForm, formData: FormData): Promis
   return { sucesso: res.mensagem };
 }
 
-/** Exclui uma sessão do próprio mestre, desde que ainda não tenha sido paga. Mensalidades são do gerente. */
+/**
+ * Exclui uma sessão do próprio mestre, desde que ainda não tenha sido paga. Mensalidades
+ * são do gerente. Numa mesa com dois mestres a sessão foi registrada uma vez para os dois,
+ * então sai também o lançamento do outro mestre, se ainda não estiver pago.
+ */
 export async function excluirSessao(id: number) {
   const mestre = await exigirMestre();
-  await prisma.sessao.deleteMany({ where: { id, mestreId: mestre.id, pagoEm: null, tipo: { not: "MENSALIDADE" } } });
+  const sessao = await prisma.sessao.findFirst({
+    where: { id, mestreId: mestre.id, pagoEm: null, tipo: { not: "MENSALIDADE" } },
+    select: { id: true, mesaId: true, data: true, tipo: true },
+  });
+  if (!sessao) return;
+  await prisma.sessao.deleteMany({
+    where: sessao.mesaId
+      ? { mesaId: sessao.mesaId, data: sessao.data, tipo: sessao.tipo, pagoEm: null }
+      : { id: sessao.id },
+  });
   revalidatePath("/", "layout");
 }
 

@@ -5,9 +5,9 @@ import { financeiroDaAssinatura, somar } from "@/lib/assinaturas";
 import { exigirGerente } from "@/lib/dal";
 import { hojeISO, intervaloDoMes, mesAtual, rotuloMes } from "@/lib/datas";
 import { prisma } from "@/lib/db";
-import { custoMensalPrevistoDaMesa, type ResultadoLiquido } from "@/lib/finance";
+import { type ResultadoLiquido, custoMensalPrevistoDaMesa, custoPrevistoComMestres } from "@/lib/finance";
 import { descreverTaxa, formatarData, formatarMoeda } from "@/lib/format";
-import { situacaoDasMesas } from "@/lib/mesas";
+import { mestresDaMesa, situacaoDasMesas } from "@/lib/mesas";
 import { mensalidadesDoMes } from "@/lib/sessoes";
 
 export const metadata = { title: "Visão geral · Gestão de Mesas" };
@@ -58,7 +58,10 @@ export default async function Page() {
   // custo previsto: por sessão × sessões/mês ou, nas mesas pagas por aluno, alunos × valor por aluno
   const mesasAtivas = mesasDoBanco.map((m) => {
     const { ocupacao, fechada } = situacao.de(m.id);
-    return { ...m, ocupacao, fechada, custo: custoMensalPrevistoDaMesa(m, m.tipoMesa, ocupacao) };
+    // custo de cada mestre da mesa; com dois mestres, cada um recebe o valor cheio
+    const custoPorMestre = custoMensalPrevistoDaMesa(m, m.tipoMesa, ocupacao);
+    const mestres = mestresDaMesa(m);
+    return { ...m, ocupacao, fechada, mestres, custoPorMestre, custo: custoPrevistoComMestres(custoPorMestre, mestres.length) };
   });
   const mensalidadesALancar = mensalidades.filter((m) => !m.lancada && m.alunos > 0);
 
@@ -86,7 +89,7 @@ export default async function Page() {
     .sort((a, b) => a.fim.getTime() - b.fim.getTime());
 
   // ---------- Saída ----------
-  const mesasComMestre = mesasAtivas.filter((m) => m.mestreId !== null);
+  const mesasComMestre = mesasAtivas.filter((m) => m.mestres.length > 0);
   const mesasSemMestre = mesasAtivas.length - mesasComMestre.length;
   const custoPrevisto = mesasComMestre.reduce((t, m) => t + m.custo, 0);
   const resultado = entrada.liquido - custoPrevisto;
@@ -106,13 +109,13 @@ export default async function Page() {
 
   const porMestre = mestres
     .map((m) => {
-      const mesas = mesasComMestre.filter((x) => x.mestreId === m.id);
+      const mesas = mesasComMestre.filter((x) => x.mestres.includes(m.id));
       const s = sessoesPorMestre.get(m.id);
       return {
         id: m.id,
         nome: m.ativo ? m.nome : `${m.nome} (inativo)`,
         mesas: mesas.length,
-        custoPrevisto: mesas.reduce((t, x) => t + x.custo, 0),
+        custoPrevisto: mesas.reduce((t, x) => t + x.custoPorMestre, 0),
         sessoes: s?.sessoes ?? 0,
         valorMes: s?.valor ?? 0,
         aPagar: aPagarPorMestre.get(m.id) ?? 0,
@@ -127,7 +130,7 @@ export default async function Page() {
     t.mesas += 1;
     t.ocupadas += m.ocupacao;
     t.vagas += m.capacidade;
-    if (m.mestreId !== null) t.custo += m.custo;
+    t.custo += m.custo;
     tipos.set(t.nome, t);
   }
   const porTipo = [...tipos.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));

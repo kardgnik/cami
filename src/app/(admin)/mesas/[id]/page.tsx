@@ -35,7 +35,7 @@ export default async function Page(props: PageProps<"/mesas/[id]">) {
     },
   });
   if (!mesa) notFound();
-  const opcoes = await carregarOpcoesMesa(mesa.mestreId);
+  const opcoes = await carregarOpcoesMesa([mesa.mestreId, mesa.mestre2Id]);
   const vinculos = [...mesa.assinaturas].sort((a, b) =>
     a.assinatura.jogador.nome.localeCompare(b.assinatura.jogador.nome, "pt-BR"),
   );
@@ -67,6 +67,7 @@ export default async function Page(props: PageProps<"/mesas/[id]">) {
           descricao: mesa.descricao ?? "",
           tipoMesaId: String(mesa.tipoMesaId),
           mestreId: mesa.mestreId ? String(mesa.mestreId) : "",
+          mestre2Id: mesa.mestre2Id ? String(mesa.mestre2Id) : "",
           valorSessaoCentavos: mesa.valorSessaoCentavos === null ? "" : paraInput(mesa.valorSessaoCentavos),
           valorAlunoCentavos: mesa.valorAlunoCentavos === null ? "" : paraInput(mesa.valorAlunoCentavos),
           diaSemana: mesa.diaSemana ?? "",

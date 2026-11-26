@@ -2,7 +2,7 @@ import "server-only";
 import { hojeISO, intervaloDoMes, mesAtual } from "./datas";
 import { prisma } from "./db";
 import { mensalidadeDaMesa, valorAlunoDaMesa, valorDaSessao, valorSessaoDaMesa, type TipoSessao } from "./finance";
-import { situacaoDasMesas } from "./mesas";
+import { mesasDoMestre, mestresDaMesa, situacaoDasMesas } from "./mesas";
 import { formatarData, formatarMoeda } from "./format";
 import { nomeDaSessao, rotuloTipoSessao } from "./labels";
 import { erroDeUnicidade, type EstadoForm } from "./validations";
@@ -29,6 +29,11 @@ export async function valorOneshot(): Promise<number> {
  * datas não podem ser futuras, a mesa (se houver) precisa estar ativa e, quando
  * `mesaDoMestre` for verdadeiro, pertencer ao mestre; o valor é calculado pelo tipo
  * e gravado na sessão.
+ *
+ * Mesa com dois mestres: os dois mestram juntos, então a sessão é registrada uma vez
+ * e gera um lançamento para cada mestre ativo da mesa, cada um com o valor cheio.
+ * Se quem registra não é mestre da mesa (ex.: substituto lançado pelo gerente), o
+ * lançamento é só dele.
  */
 export async function registrarSessaoComRegras(
   dados: DadosNovaSessao,
@@ -45,10 +50,12 @@ export async function registrarSessaoComRegras(
 
   const mesa = dados.mesaId
     ? await prisma.mesa.findFirst({
-        where: { id: dados.mesaId, ativo: true, ...(mesaDoMestre ? { mestreId } : {}) },
+        where: { id: dados.mesaId, ativo: true, ...(mesaDoMestre ? mesasDoMestre(mestreId) : {}) },
         select: {
           id: true,
           nome: true,
+          mestreId: true,
+          mestre2Id: true,
           valorSessaoCentavos: true,
           tipoMesa: { select: { pagamentoMestre: true, valorSessaoCentavos: true, valorAlunoCentavos: true } },
         },
@@ -72,19 +79,32 @@ export async function registrarSessaoComRegras(
     dados.tipo === "ONESHOT" ? await valorOneshot() : 0,
   );
 
+  // quem recebe: os mestres (ativos) da mesa, se quem registra é um deles; senão, só quem registra
+  const daMesa = mesa ? mestresDaMesa(mesa) : [];
+  const candidatos = daMesa.includes(mestreId) ? daMesa : [mestreId];
+  const mestres = await prisma.mestre.findMany({
+    where: { id: { in: candidatos }, OR: [{ ativo: true }, { id: mestreId }] },
+    select: { id: true, nome: true },
+  });
+  mestres.sort((a, b) => candidatos.indexOf(a.id) - candidatos.indexOf(b.id));
+
   try {
-    await prisma.sessao.create({
-      data: {
-        tipo: dados.tipo,
-        mesaId: mesa?.id ?? null,
-        nomeOneshot: dados.nomeOneshot,
-        mestreId,
-        data: dados.data,
-        dataReferencia: dados.dataReferencia,
-        observacoes: dados.observacoes,
-        valorCentavos,
-      },
-    });
+    await prisma.$transaction(
+      mestres.map((m) =>
+        prisma.sessao.create({
+          data: {
+            tipo: dados.tipo,
+            mesaId: mesa?.id ?? null,
+            nomeOneshot: dados.nomeOneshot,
+            mestreId: m.id,
+            data: dados.data,
+            dataReferencia: dados.dataReferencia,
+            observacoes: dados.observacoes,
+            valorCentavos,
+          },
+        }),
+      ),
+    );
   } catch (e) {
     const erro = erroDeUnicidade(e, valores, "data", SESSAO_DUPLICADA);
     if (erro) return { ok: false, estado: erro };
@@ -95,10 +115,11 @@ export async function registrarSessaoComRegras(
   const extra = dados.dataReferencia ? ` (repõe ${formatarData(dados.dataReferencia)})` : "";
   const porAluno = mesa?.tipoMesa.pagamentoMestre === "POR_ALUNO";
   const valor = porAluno ? "sem valor (mesa paga por aluno, na mensalidade)" : formatarMoeda(valorCentavos);
+  const dupla = mestres.length > 1 ? ` para ${mestres.map((m) => m.nome).join(" e ")}${porAluno ? "" : ", cada um"}` : "";
   return {
     ok: true,
     valorCentavos,
-    mensagem: `${rotuloTipoSessao(dados.tipo)} registrada: ${nome} em ${formatarData(dados.data)}${extra} — ${valor}.`,
+    mensagem: `${rotuloTipoSessao(dados.tipo)} registrada: ${nome} em ${formatarData(dados.data)}${extra} — ${valor}${dupla}.`,
   };
 }
 

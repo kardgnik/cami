@@ -19,7 +19,8 @@ export async function registrarSessao(_: EstadoForm, formData: FormData): Promis
   const res = await registrarSessaoComRegras(r.dados, mestre.id, valores, { mesaDoMestre: false });
   if (!res.ok) return res.estado;
   revalidatePath("/", "layout");
-  return { sucesso: `${res.mensagem} Mestre: ${mestre.nome}.` };
+  // mesa com dois mestres: a mensagem já diz para quem foi; senão, diz o mestre escolhido
+  return { sucesso: res.mensagem.includes(" para ") ? res.mensagem : `${res.mensagem} Mestre: ${mestre.nome}.` };
 }
 
 export async function marcarPaga(id: number) {

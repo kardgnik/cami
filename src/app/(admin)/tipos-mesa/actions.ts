@@ -17,6 +17,19 @@ async function salvar(id: number | null, formData: FormData): Promise<EstadoForm
   await exigirGerente();
   const r = validar(tipoMesaSchema, formData);
   if (!r.ok) return r.estado;
+  if (id && r.dados.pagamentoMestre === "POR_ALUNO") {
+    const comDois = await prisma.mesa.count({ where: { tipoMesaId: id, mestre2Id: { not: null } } });
+    if (comDois > 0) {
+      return {
+        erros: {
+          pagamentoMestre: [
+            `${comDois} mesa${comDois === 1 ? "" : "s"} deste tipo ${comDois === 1 ? "tem" : "têm"} dois mestres. Mesas pagas por aluno têm um só mestre: tire o segundo mestre delas antes.`,
+          ],
+        },
+        valores: lerFormulario(formData),
+      };
+    }
+  }
   try {
     if (id) await prisma.tipoMesa.update({ where: { id }, data: r.dados });
     else await prisma.tipoMesa.create({ data: r.dados });

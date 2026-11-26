@@ -12,12 +12,13 @@ export const metadata = { title: "Mestres · Gestão de Mesas" };
 export default async function Page() {
   await exigirGerente();
   const { inicio, fim } = intervaloDoMes(mesAtual());
-  const [mestres, mesasAtivas, sessoesMes, aReceber] = await Promise.all([
+  const [mestres, mesasAtivas, mesasComoSegundo, sessoesMes, aReceber] = await Promise.all([
     prisma.mestre.findMany({
       orderBy: [{ ativo: "desc" }, { nome: "asc" }],
       select: { id: true, nome: true, usuario: true, telefone: true, ativo: true },
     }),
     prisma.mesa.groupBy({ by: ["mestreId"], where: { ativo: true, mestreId: { not: null } }, _count: true }),
+    prisma.mesa.groupBy({ by: ["mestre2Id"], where: { ativo: true, mestre2Id: { not: null } }, _count: true }),
     prisma.sessao.groupBy({
       by: ["mestreId"],
       where: { data: { gte: inicio, lt: fim }, tipo: { not: "MENSALIDADE" } },
@@ -25,7 +26,9 @@ export default async function Page() {
     }),
     prisma.sessao.groupBy({ by: ["mestreId"], where: { pagoEm: null }, _sum: { valorCentavos: true } }),
   ]);
+  // mesas em que é o principal + mesas em que é o segundo mestre
   const mesas = new Map(mesasAtivas.map((g) => [g.mestreId, g._count]));
+  for (const g of mesasComoSegundo) mesas.set(g.mestre2Id, (mesas.get(g.mestre2Id) ?? 0) + g._count);
   const sessoes = new Map(sessoesMes.map((g) => [g.mestreId, g._count]));
   const pendente = new Map(aReceber.map((g) => [g.mestreId, g._sum.valorCentavos ?? 0]));
 

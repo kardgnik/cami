@@ -5,6 +5,7 @@ import { Cabecalho, Selo, SeloStatus } from "@/components/ui";
 import { financeiroDaAssinatura } from "@/lib/assinaturas";
 import { hojeISO } from "@/lib/datas";
 import { promocaoVigente } from "@/lib/finance";
+import { nomesDosMestres } from "@/lib/mesas";
 import { exigirGerente } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { formatarData, formatarMoeda } from "@/lib/format";
@@ -34,6 +35,7 @@ export default async function Page(props: PageProps<"/jogadores/[id]">) {
                   diaSemana: true,
                   tipoMesa: { select: { nome: true } },
                   mestre: { select: { nome: true } },
+                  mestre2: { select: { nome: true } },
                 },
               },
             },
@@ -156,7 +158,11 @@ export default async function Page(props: PageProps<"/jogadores/[id]">) {
                                 <span className="text-slate-500">
                                   · {v.mesa.tipoMesa.nome}
                                   {v.mesa.diaSemana ? ` · ${rotuloDia(v.mesa.diaSemana)}` : ""} ·{" "}
-                                  {v.mesa.mestre ? `Mestre: ${v.mesa.mestre.nome}` : "Sem mestre"}
+                                  {v.mesa.mestre2
+                                    ? `Mestres: ${nomesDosMestres(v.mesa)}`
+                                    : v.mesa.mestre
+                                      ? `Mestre: ${v.mesa.mestre.nome}`
+                                      : "Sem mestre"}
                                 </span>
                               </li>
                             ))}
