@@ -131,3 +131,13 @@ export function DescricaoSessao({
     </span>
   );
 }
+
+/** "Faltou: Ana" / "Faltaram: Ana, Bruno" (nada quando ninguém faltou). */
+export function Faltas({ nomes }: { nomes: string[] }) {
+  if (nomes.length === 0) return null;
+  return (
+    <p className="text-xs text-amber-700">
+      {nomes.length === 1 ? "Faltou" : "Faltaram"}: {nomes.join(", ")}
+    </p>
+  );
+}

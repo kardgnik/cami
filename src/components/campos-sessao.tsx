@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AreaTexto, Campo, Selecao } from "@/components/form";
+import { AreaTexto, Campo, ErrosCampo, Selecao } from "@/components/form";
 import { valorDaSessao, type TipoSessao } from "@/lib/finance";
 import { formatarMoeda } from "@/lib/format";
 import { TIPOS_SESSAO } from "@/lib/labels";
@@ -15,6 +15,8 @@ export type OpcaoMesaSessao = {
   valorCentavos: number;
   /** Mesa paga por aluno: a sessão é registrada sem valor. */
   porAluno?: boolean;
+  /** Jogadores da mesa, para marcar quem faltou. */
+  jogadores?: { id: number; nome: string }[];
   mestreId?: number | null;
 };
 
@@ -42,6 +44,7 @@ export function CamposSessao({
   const [tipo, setTipo] = useState<TipoSessao>((v("tipo") as TipoSessao) ?? "NORMAL");
   const [mesaId, setMesaId] = useState(v("mesaId") ?? (mesas.length === 1 ? String(mesas[0].id) : ""));
   const mesa = mesas.find((m) => String(m.id) === mesaId);
+  const faltasEnviadas = Array.isArray(estado.valores?.faltas) ? estado.valores.faltas : [];
   const oneshot = tipo === "ONESHOT";
   const reposicao = tipo === "REPOSICAO";
   const valor = oneshot ? valorOneshotCentavos : mesa ? valorDaSessao(tipo, mesa.valorCentavos, valorOneshotCentavos) : null;
@@ -121,6 +124,29 @@ export function CamposSessao({
           )}
         </div>
       </div>
+
+      {!oneshot && mesa && (mesa.jogadores?.length ?? 0) > 0 && (
+        // key: ao trocar de mesa, a lista recomeça sem marcações
+        <fieldset key={mesa.id}>
+          <legend className="mb-2 block text-sm font-medium text-slate-700">Quem faltou? (opcional)</legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {mesa.jogadores!.map((j) => (
+              <label key={j.id} className="flex items-center gap-2.5 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="faltas[]"
+                  value={j.id}
+                  defaultChecked={faltasEnviadas.includes(String(j.id))}
+                  className="size-4 shrink-0 accent-indigo-600"
+                />
+                <span className="min-w-0 truncate">{j.nome}</span>
+              </label>
+            ))}
+          </div>
+          <ErrosCampo erros={estado.erros?.faltas} />
+          <p className="mt-1 text-xs text-slate-500">A falta não muda o valor da sessão.</p>
+        </fieldset>
+      )}
 
       <AreaTexto rotulo="Observações (opcional)" name="observacoes" defaultValue={v("observacoes")} erros={estado.erros?.observacoes} />
 

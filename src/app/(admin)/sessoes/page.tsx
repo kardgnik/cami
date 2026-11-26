@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { BotaoConfirmar, BotaoEnviar } from "@/components/botao-confirmar";
 import { SeletorMes } from "@/components/seletor-mes";
-import { Cabecalho, DescricaoSessao, Indicador, SeloSessao, Vazio } from "@/components/ui";
+import { Cabecalho, DescricaoSessao, Faltas, Indicador, SeloSessao, Vazio } from "@/components/ui";
+import { faltasDasSessoes, jogadoresDasMesas } from "@/lib/mesas";
 import { dataDoLancamento, nomeDaSessao } from "@/lib/labels";
 import type { Prisma } from "@/generated/prisma/client";
 import { hojeISO, intervaloDoMes, lerMes, mesAtual, rotuloMes } from "@/lib/datas";
@@ -58,6 +59,10 @@ export default async function Page(props: PageProps<"/sessoes">) {
   const qtdSessoes = sessoesDoMes.filter((s) => s.tipo !== "MENSALIDADE").length;
   const qtdMensalidades = sessoesDoMes.length - qtdSessoes;
   const mensalidadesPendentes = mensalidades.filter((m) => !m.lancada && m.alunos > 0);
+  const [faltas, jogadores] = await Promise.all([
+    faltasDasSessoes(sessoesDoMes),
+    jogadoresDasMesas(mesasAtivas.map((m) => m.id)),
+  ]);
   const mesFuturo = mes > mesAtual();
 
   const porMestre = new Map<
@@ -154,6 +159,7 @@ export default async function Page(props: PageProps<"/sessoes">) {
                         ) : (
                           <DescricaoSessao sessao={s} />
                         )}
+                        <Faltas nomes={faltas.de(s)} />
                       </td>
                       <td>{s.mestre.nome}</td>
                       <td className="num">{formatarMoeda(s.valorCentavos)}</td>
@@ -319,6 +325,7 @@ export default async function Page(props: PageProps<"/sessoes">) {
               nome: m.nome,
               detalhe: m.tipoMesa.nome,
               porAluno: m.tipoMesa.pagamentoMestre === "POR_ALUNO",
+              jogadores: jogadores.de(m.id),
               mestreId: m.mestreId,
               valorCentavos: valorSessaoDaMesa(m, m.tipoMesa),
             }))}

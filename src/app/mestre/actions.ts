@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { exigirMestre } from "@/lib/dal";
 import { prisma } from "@/lib/db";
-import { registrarSessaoComRegras } from "@/lib/sessoes";
+import { limparFaltasSemSessao, registrarSessaoComRegras } from "@/lib/sessoes";
 import {
   lerFormulario,
   sessaoSchema,
@@ -41,6 +41,7 @@ export async function excluirSessao(id: number) {
       ? { mesaId: sessao.mesaId, data: sessao.data, tipo: sessao.tipo, pagoEm: null }
       : { id: sessao.id },
   });
+  await limparFaltasSemSessao();
   revalidatePath("/", "layout");
 }
 

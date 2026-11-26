@@ -13,6 +13,7 @@ import {
   validar,
   type EstadoForm,
 } from "@/lib/validations";
+import { limparFaltasSemSessao } from "@/lib/sessoes";
 
 const ERRO_USUARIO_GERENTE = "Este usuário já é usado pelo gerente.";
 const ERRO_USUARIO_DUPLICADO = "Já existe um mestre com este usuário.";
@@ -86,6 +87,7 @@ export async function excluirMestre(id: number): Promise<EstadoForm> {
     prisma.sessao.deleteMany({ where: { mestreId: id } }),
     prisma.mestre.delete({ where: { id } }),
   ]);
+  await limparFaltasSemSessao();
   revalidatePath("/", "layout");
   redirect("/mestres");
 }

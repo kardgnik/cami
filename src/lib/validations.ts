@@ -244,6 +244,11 @@ const camposSessao = {
     .transform((v) => (v ? v : null))
     .pipe(dataISO.nullable()),
   observacoes: textoOpcional(500),
+  /** Jogadores que faltaram (checkboxes name="faltas[]"). */
+  faltas: z
+    .array(z.coerce.number().int().positive())
+    .default([])
+    .transform((ids) => [...new Set(ids)]),
 };
 
 type DadosSessao = {
@@ -252,13 +257,15 @@ type DadosSessao = {
   nomeOneshot: string | null;
   data: Date;
   dataReferencia: Date | null;
+  faltas: number[];
 };
 
 /** Regras que dependem do tipo: mesa x oneshot e a data de referência da reposição. */
 function regrasDaSessao<T extends DadosSessao>(d: T, ctx: z.RefinementCtx): T {
   if (d.tipo === "ONESHOT") {
     if (!d.nomeOneshot) ctx.addIssue({ code: "custom", path: ["nomeOneshot"], message: "Informe o nome da oneshot." });
-    d = { ...d, mesaId: null };
+    // oneshot não tem mesa, então não tem jogadores para faltar
+    d = { ...d, mesaId: null, faltas: [] };
   } else {
     if (!d.mesaId) ctx.addIssue({ code: "custom", path: ["mesaId"], message: "Selecione a mesa." });
     d = { ...d, nomeOneshot: null };

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { intervaloDoMes, lerMes, rotuloMes } from "@/lib/datas";
 import { exigirGerente } from "@/lib/dal";
 import { prisma } from "@/lib/db";
-import { lancarMensalidades, registrarSessaoComRegras } from "@/lib/sessoes";
+import { lancarMensalidades, limparFaltasSemSessao, registrarSessaoComRegras } from "@/lib/sessoes";
 import { lerFormulario, sessaoAdminSchema, validar, type EstadoForm } from "@/lib/validations";
 
 /** Registro feito pelo gerente em nome de um mestre. Não redireciona: devolve mensagem de sucesso. */
@@ -39,6 +39,8 @@ export async function desfazerPagamento(id: number) {
 export async function excluirSessao(id: number) {
   await exigirGerente();
   await prisma.sessao.deleteMany({ where: { id } });
+  // as faltas saem se não sobrou sessão da mesa nessa data (ex.: o outro mestre ainda tem a dele)
+  await limparFaltasSemSessao();
   revalidatePath("/", "layout");
 }
 

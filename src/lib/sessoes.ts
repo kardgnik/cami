@@ -2,7 +2,7 @@ import "server-only";
 import { hojeISO, intervaloDoMes, mesAtual } from "./datas";
 import { prisma } from "./db";
 import { mensalidadeDaMesa, valorAlunoDaMesa, valorDaSessao, valorSessaoDaMesa, type TipoSessao } from "./finance";
-import { mesasDoMestre, mestresDaMesa, situacaoDasMesas } from "./mesas";
+import { jogadoresDasMesas, mesasDoMestre, mestresDaMesa, situacaoDasMesas } from "./mesas";
 import { formatarData, formatarMoeda } from "./format";
 import { nomeDaSessao, rotuloTipoSessao } from "./labels";
 import { erroDeUnicidade, type EstadoForm } from "./validations";
@@ -14,6 +14,8 @@ export type DadosNovaSessao = {
   data: Date;
   dataReferencia: Date | null;
   observacoes: string | null;
+  /** Jogadores da mesa que faltaram. */
+  faltas: number[];
 };
 
 const SESSAO_DUPLICADA = "Esta mesa já tem sessão registrada nesta data.";
@@ -62,6 +64,10 @@ export async function registrarSessaoComRegras(
       })
     : null;
   if (dados.mesaId && !mesa) erros.mesaId = ["Mesa indisponível."];
+  // faltas: só jogadores da mesa (assinatura não cancelada)
+  const jogadoresDaMesa = mesa ? (await jogadoresDasMesas([mesa.id])).de(mesa.id) : [];
+  const faltosos = jogadoresDaMesa.filter((j) => dados.faltas.includes(j.id));
+  if (faltosos.length !== dados.faltas.length) erros.faltas = ["Marque só jogadores desta mesa."];
   // Uma sessão por mesa por dia, de qualquer tipo. (A chave única do banco inclui o
   // tipo só para a mensalidade, datada no dia 1º, conviver com uma sessão nesse dia.)
   if (mesa && !erros.data) {
@@ -89,8 +95,8 @@ export async function registrarSessaoComRegras(
   mestres.sort((a, b) => candidatos.indexOf(a.id) - candidatos.indexOf(b.id));
 
   try {
-    await prisma.$transaction(
-      mestres.map((m) =>
+    await prisma.$transaction([
+      ...mestres.map((m) =>
         prisma.sessao.create({
           data: {
             tipo: dados.tipo,
@@ -104,7 +110,16 @@ export async function registrarSessaoComRegras(
           },
         }),
       ),
-    );
+      // uma falta por jogador e sessão, mesmo em mesa com dois mestres
+      ...(mesa && faltosos.length
+        ? [
+            prisma.falta.createMany({
+              data: faltosos.map((j) => ({ mesaId: mesa.id, jogadorId: j.id, data: dados.data })),
+              skipDuplicates: true,
+            }),
+          ]
+        : []),
+    ]);
   } catch (e) {
     const erro = erroDeUnicidade(e, valores, "data", SESSAO_DUPLICADA);
     if (erro) return { ok: false, estado: erro };
@@ -119,8 +134,23 @@ export async function registrarSessaoComRegras(
   return {
     ok: true,
     valorCentavos,
-    mensagem: `${rotuloTipoSessao(dados.tipo)} registrada: ${nome} em ${formatarData(dados.data)}${extra} — ${valor}${dupla}.`,
+    mensagem: `${rotuloTipoSessao(dados.tipo)} registrada: ${nome} em ${formatarData(dados.data)}${extra} — ${valor}${dupla}.${
+      faltosos.length ? ` ${faltosos.length === 1 ? "Faltou" : "Faltaram"}: ${faltosos.map((j) => j.nome).join(", ")}.` : ""
+    }`,
   };
+}
+
+/**
+ * Apaga faltas que ficaram sem sessão (depois de excluir sessões ou um mestre).
+ * Uma falta vale enquanto houver alguma sessão daquela mesa naquela data.
+ */
+export async function limparFaltasSemSessao() {
+  await prisma.$executeRaw`
+    DELETE FROM "faltas" f
+    WHERE NOT EXISTS (
+      SELECT 1 FROM "sessoes" s
+      WHERE s."mesaId" = f."mesaId" AND s."data" = f."data" AND s."tipo" <> 'MENSALIDADE'
+    )`;
 }
 
 // ---------- Mensalidades (mesas pagas por aluno) ----------

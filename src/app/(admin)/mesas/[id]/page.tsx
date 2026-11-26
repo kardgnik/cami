@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BotaoExcluir } from "@/components/botao-excluir";
-import { Cabecalho, DescricaoSessao, Selo, SeloSessao, SeloStatus, Vazio } from "@/components/ui";
+import { Cabecalho, DescricaoSessao, Faltas, Selo, SeloSessao, SeloStatus, Vazio } from "@/components/ui";
+import { faltasDasSessoes } from "@/lib/mesas";
 import { exigirGerente } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { formatarMoeda, paraInput } from "@/lib/format";
@@ -43,6 +44,7 @@ export default async function Page(props: PageProps<"/mesas/[id]">) {
   const ocupados = ocupantes.length;
   const fechada = ocupantes.some((v) => v.assinatura.plano.grupoFechado);
   const totalSessoes = await prisma.sessao.count({ where: { mesaId: mesa.id } });
+  const faltas = await faltasDasSessoes(mesa.sessoes);
   const avisoExclusao = [
     `Excluir a mesa ${mesa.nome}?`,
     totalSessoes > 0 ? `Também serão apagados ${totalSessoes} lançamento(s) da mesa (sessões e mensalidades), inclusive os já pagos.` : "",
@@ -138,6 +140,7 @@ export default async function Page(props: PageProps<"/mesas/[id]">) {
                   <tr key={s.id}>
                     <td>
                       {dataDoLancamento(s)} <DescricaoSessao sessao={{ ...s, mesa: null }} semNome />
+                      <Faltas nomes={faltas.de({ ...s, mesaId: mesa.id })} />
                     </td>
                     <td>{s.mestre.nome}</td>
                     <td className="num">{formatarMoeda(s.valorCentavos)}</td>

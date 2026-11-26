@@ -206,3 +206,15 @@ describe("mesa com dois mestres", () => {
     expect(r.ok && r.dados).toMatchObject({ mestreId: 2, mestre2Id: null });
   });
 });
+
+describe("faltas na sessão", () => {
+  it("lê faltas[] sem duplicar e ignora em oneshot", async () => {
+    const { sessaoSchema } = await import("./validations");
+    const r = validar(sessaoSchema, fd({ tipo: "NORMAL", mesaId: "1", data: "2026-11-20", "faltas[]": ["3", "5", "3"] }));
+    expect(r.ok && r.dados.faltas).toEqual([3, 5]);
+    const sem = validar(sessaoSchema, fd({ tipo: "NORMAL", mesaId: "1", data: "2026-11-20" }));
+    expect(sem.ok && sem.dados.faltas).toEqual([]);
+    const one = validar(sessaoSchema, fd({ tipo: "ONESHOT", nomeOneshot: "X", data: "2026-11-20", "faltas[]": ["3"] }));
+    expect(one.ok && one.dados.faltas).toEqual([]);
+  });
+});

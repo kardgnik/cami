@@ -1,6 +1,6 @@
 import { BotaoConfirmar } from "@/components/botao-confirmar";
 import { SeletorMes } from "@/components/seletor-mes";
-import { Cabecalho, DescricaoSessao, Indicador, SeloSessao, Vazio } from "@/components/ui";
+import { Cabecalho, DescricaoSessao, Faltas, Indicador, SeloSessao, Vazio } from "@/components/ui";
 import { dataDoLancamento, nomeDaSessao, rotuloDia } from "@/lib/labels";
 import { exigirMestre } from "@/lib/dal";
 import { hojeISO, intervaloDoMes, lerMes, mesAtual, rotuloMes } from "@/lib/datas";
@@ -8,7 +8,7 @@ import { prisma } from "@/lib/db";
 import { mensalidadeDaMesa, valorAlunoDaMesa, valorSessaoDaMesa } from "@/lib/finance";
 import { formatarData, formatarMoeda } from "@/lib/format";
 import { excluirSessao } from "./actions";
-import { mesasDoMestre } from "@/lib/mesas";
+import { faltasDasSessoes, mesasDoMestre } from "@/lib/mesas";
 import { valorOneshot } from "@/lib/sessoes";
 import { SessaoForm } from "./sessao-form";
 
@@ -39,7 +39,7 @@ export default async function Page(props: PageProps<"/mestre">) {
         // jogadores com assinatura não cancelada; só o nome (o mestre não vê contato nem financeiro)
         assinaturas: {
           where: { assinatura: { status: { not: "CANCELADO" } } },
-          select: { assinatura: { select: { jogador: { select: { nome: true } } } } },
+          select: { assinatura: { select: { jogador: { select: { id: true, nome: true } } } } },
         },
       },
     }),
@@ -54,7 +54,12 @@ export default async function Page(props: PageProps<"/mestre">) {
     detalhe: m.tipoMesa.nome,
     porAluno: m.tipoMesa.pagamentoMestre === "POR_ALUNO",
     valorCentavos: valorSessaoDaMesa(m, m.tipoMesa),
+    // jogadores da mesa (sem repetir quem tem duas assinaturas nela), para marcar faltas
+    jogadores: [...new Map(m.assinaturas.map((a) => [a.assinatura.jogador.id, a.assinatura.jogador])).values()].sort((a, b) =>
+      a.nome.localeCompare(b.nome, "pt-BR"),
+    ),
   }));
+  const faltas = await faltasDasSessoes(sessoes);
   const qtdSessoes = sessoes.filter((s) => s.tipo !== "MENSALIDADE").length;
   const valorDaOneshot = await valorOneshot();
 
@@ -111,6 +116,7 @@ export default async function Page(props: PageProps<"/mestre">) {
                     <td className="whitespace-nowrap">{dataDoLancamento(s)}</td>
                     <td>
                       <DescricaoSessao sessao={s} />
+                      <Faltas nomes={faltas.de(s)} />
                       {s.observacoes && <p className="max-w-xs truncate text-xs text-slate-500">{s.observacoes}</p>}
                     </td>
                     <td className="num">{formatarMoeda(s.valorCentavos)}</td>

@@ -113,6 +113,7 @@ model Jogador {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   assinaturas Assinatura[]
+  faltas      Falta[]
 
   @@index([nome])
   @@map("jogadores")
@@ -228,6 +229,7 @@ model Mesa {
   mestre2     Mestre?          @relation("SegundoMestre", fields: [mestre2Id], references: [id], onDelete: SetNull)
   assinaturas AssinaturaMesa[]
   sessoes     Sessao[]
+  faltas      Falta[]
 
   @@index([mestreId])
   @@index([mestre2Id])
@@ -279,4 +281,22 @@ model Configuracao {
   updatedAt            DateTime @updatedAt
 
   @@map("configuracoes")
+}
+
+/// Jogador que faltou à sessão de uma mesa numa data. Uma por sessão (mesmo em mesa
+/// com dois mestres); não muda o pagamento do mestre. Sai junto quando a sessão é
+/// excluída (lib/sessoes.ts) e em cascata com a mesa ou o jogador.
+model Falta {
+  id        Int      @id @default(autoincrement())
+  mesaId    Int
+  jogadorId Int
+  data      DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  mesa    Mesa    @relation(fields: [mesaId], references: [id], onDelete: Cascade)
+  jogador Jogador @relation(fields: [jogadorId], references: [id], onDelete: Cascade)
+
+  @@unique([mesaId, data, jogadorId])
+  @@index([jogadorId, data])
+  @@map("faltas")
 }

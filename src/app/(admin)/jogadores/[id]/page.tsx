@@ -46,6 +46,15 @@ export default async function Page(props: PageProps<"/jogadores/[id]">) {
   });
   if (!jogador) notFound();
   const hoje = hojeISO();
+  const faltas = await prisma.falta.findMany({
+    where: { jogadorId: jogador.id },
+    orderBy: { data: "desc" },
+    take: 10,
+    include: { mesa: { select: { id: true, nome: true } } },
+  });
+  const desde = new Date(`${hoje}T00:00:00Z`);
+  desde.setUTCDate(desde.getUTCDate() - 90);
+  const faltas90 = await prisma.falta.count({ where: { jogadorId: jogador.id, data: { gte: desde } } });
 
   return (
     <>
@@ -66,7 +75,8 @@ export default async function Page(props: PageProps<"/jogadores/[id]">) {
       />
 
       <div className="grid gap-6 xl:grid-cols-[22rem_1fr]">
-        <section>
+        <section className="space-y-6">
+          <div>
           <h2 className="mb-3 text-sm font-semibold text-slate-900">Dados do jogador</h2>
           <JogadorForm
             acao={atualizarJogador.bind(null, jogador.id)}
@@ -77,6 +87,29 @@ export default async function Page(props: PageProps<"/jogadores/[id]">) {
               observacoes: jogador.observacoes ?? "",
             }}
           />
+          </div>
+          <div>
+            <h2 className="mb-3 text-sm font-semibold text-slate-900">
+              Faltas{" "}
+              <span className="font-normal text-slate-500">
+                ({faltas90} nos últimos 90 dias)
+              </span>
+            </h2>
+            {faltas.length === 0 ? (
+              <p className="cartao px-4 py-3 text-sm text-slate-500">Nenhuma falta registrada.</p>
+            ) : (
+              <ul className="cartao divide-y divide-slate-100 text-sm">
+                {faltas.map((f) => (
+                  <li key={f.id} className="flex justify-between gap-3 px-4 py-2">
+                    <Link href={`/mesas/${f.mesa.id}`} className="link">
+                      {f.mesa.nome}
+                    </Link>
+                    <span className="tabular-nums text-slate-600">{formatarData(f.data)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </section>
 
         <section className="min-w-0">
